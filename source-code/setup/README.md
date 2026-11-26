@@ -1,0 +1,87 @@
+# Setup
+
+Double-click **`Kira-Setup.cmd`**. One file checks the machine, installs both
+halves of Kira, builds the UI, writes a desktop shortcut, and starts the app.
+
+## First run
+
+- When this folder sits next to `run_kira.py`, that checkout is used.
+- When only `setup/` is present, it downloads the repository first. The default
+  target is `%USERPROFILE%\Kira`; pass `-InstallDir` to choose another folder.
+
+Prerequisites: **Python 3.12+** and **Node.js 20.19+ or 22.12+**. The script
+checks both and names the missing one. They can be installed with:
+
+```powershell
+winget install -e --id Python.Python.3.12
+winget install -e --id OpenJS.NodeJS.LTS
+```
+
+The first Kira start prints a browser token and a confirm secret once. Provider
+keys are entered in **Providers**, not in a console.
+
+## Using it from GitHub
+
+On the repository page choose **Code -> Download ZIP**, extract it, and
+double-click `setup\Kira-Setup.cmd`. If the archive contains a `source-code`
+folder, open `source-code\setup\Kira-Setup.cmd` instead. That ZIP is the whole
+source tree; the setup folder is ordinary source, not a binary installer.
+
+To make a copied `setup/` folder bootstrap the project by itself, put the
+repository URL on one line in `repository.txt`:
+
+```text
+https://github.com/OWNER/REPO
+```
+
+The script uses `-RepoUrl`, `$env:KIRA_REPO_URL`, `repository.txt`, or the
+`origin` remote of a checkout beside it, in that order. Without any of those it
+asks once.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| `-CheckOnly` | Print the source and tool versions; change nothing. |
+| `-DownloadOnly` | Download the source tree, then stop (even beside a checkout). |
+| `-InstallDir PATH` | Where a downloaded source tree goes. |
+| `-RepoUrl URL` | Repository or direct ZIP URL for a standalone download. |
+| `-Branch NAME` | Branch to download; default tries `main`, then `master`. |
+| `-SkipBuild` | Install the engine only; skip UI packages and the build. |
+| `-NoLaunch` | Install and make the shortcut without starting Kira. |
+| `-NoShortcut` | Do not write `Kira.lnk` to the desktop. |
+| `-NoPrompt` | Never ask for a repository URL; fail instead. |
+
+Examples:
+
+```powershell
+.\Kira-Setup.cmd -CheckOnly
+.\Kira-Setup.cmd -NoLaunch -NoShortcut
+.\Kira-Setup.cmd -RepoUrl https://github.com/OWNER/REPO -InstallDir D:\Apps\Kira
+```
+
+## Publishing this as source
+
+Everything in `setup/` is text and belongs in the repository. The root
+`.gitignore` already keeps credentials, `.kira-data/`, `node_modules/`,
+virtual environments, build output, and logs out of Git.
+
+```powershell
+git remote add origin https://github.com/OWNER/REPO.git
+git push -u origin master
+```
+
+After the first push, edit `setup/repository.txt` with that URL and commit it,
+so a copied setup folder can download the project without asking. Do not commit
+a generated ZIP; GitHub creates the source archive for every repository and
+release automatically.
+
+## Troubleshooting
+
+- **Python or Node not found:** install the version above, open a new terminal,
+  and run again. The current window does not see a PATH change.
+- **`npm run build` fails:** delete `kira-chat\node_modules` and run the setup
+  again; it will use `npm ci` from the lockfile.
+- **Port 8901 is busy:** start later with `run-kira.bat --port 8905`.
+- **No desktop shortcut:** the app still starts from `run-kira.bat`; shortcut
+  creation is the only optional step that can fail silently.

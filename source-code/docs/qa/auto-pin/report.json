@@ -1,0 +1,68 @@
+[
+  {
+    "step": "1",
+    "check": "chat loads with no pin",
+    "observed": "{\"value\":\"\",\"selected\":\"Auto · the router picks\",\"opts\":[\" | Auto · the router picks\",\"mini | mini · mock_one · fast\",\"small | small · mock_one · fast\",\"solo | solo · mock_two · fast\"],\"mode\":\"AUTO\",\"footer\":\"Enter sends · 3 models · AUTO\"}",
+    "verdict": "matched"
+  },
+  {
+    "step": "2",
+    "check": "the Auto option relabels per lane",
+    "observed": "Auto · the router picks",
+    "verdict": "matched"
+  },
+  {
+    "step": "3",
+    "check": "an unpinned AUTO turn is served",
+    "observed": "mock_onetryingmini | mock_oneansweredmini",
+    "verdict": "matched"
+  },
+  {
+    "step": "4",
+    "check": "the picker names every provider per id",
+    "observed": "Auto · the router picks || mini · mock_one · fast || small · mock_one · fast || solo · mock_two · fast",
+    "verdict": "matched"
+  },
+  {
+    "step": "5",
+    "check": "vision reads back on the provider table",
+    "observed": "{\"mockTwo\":true,\"mockOneTextOnly\":true,\"oneRow\":\"mock_oneopenai_compat · http://127.0.0.1:8999/v1mini, smallkey ok text onlyprovider/mock_onestore key mock_oneforget key mock_oneonfastpowerfulset cap mock_oneclear override mock_one1501✓ 0✗test mock_one\"}",
+    "verdict": "matched"
+  },
+  {
+    "step": "6",
+    "check": "the cap lands and reads back",
+    "observed": "{\"capInput\":\"149\",\"row\":\"mock_oneopenai_compat · http://127.0.0.1:8999/v1mini, smallkey ok text onlyprovider/mock_onestore key mock_oneforget key mock_oneonfastpowerfulset cap mock_oneclear override mock_onewas unlimited150 at cap1✓ 0✗test mock_one\"}",
+    "verdict": "matched"
+  },
+  {
+    "step": "7a",
+    "check": "the pin survives a route change",
+    "observed": "mini",
+    "verdict": "matched"
+  },
+  {
+    "step": "7",
+    "check": "AUTO holds the pin as a preference and fails over",
+    "observed": "mock_oneover budgetused 150 of 149 tokens in 2026-10 | mock_twotryingsolo | mock_twoansweredsolo",
+    "verdict": "matched"
+  },
+  {
+    "step": "8",
+    "check": "FAST refuses what its lane cannot serve",
+    "observed": "budget_exhausted: mode FAST: over the monthly cap for 2026-10 (mock_one) - raise the cap in the dashboard or wait for the resetraise a cap in Providers",
+    "verdict": "matched"
+  },
+  {
+    "step": "9",
+    "check": "a model nobody offers is refused",
+    "observed": "400 {\"error\":{\"code\":\"config_error\",\"message\":\"no provider in mode AUTO offers model 'minim'; configured: ['mini', 'small', 'solo']\",\"status\":400,\"retryable\":false}}",
+    "verdict": "matched"
+  },
+  {
+    "step": "10",
+    "check": "the engine reads vision back over HTTP",
+    "observed": "{\"providers\":[[\"mock_one\",false],[\"mock_two\",true]],\"voice_vision\":{\"provider\":\"mock_two\",\"model\":\"solo\"}}",
+    "verdict": "matched"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "name": "kira-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Hand-authored TypeScript mirror of the Kira spine OpenAPI contract.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./openapi.json": "./openapi.json",
+    "./contract.json": "./contract.json"
+  },
+  "scripts": {
+    "check": "node check-drift.mjs",
+    "test": "node check-drift.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

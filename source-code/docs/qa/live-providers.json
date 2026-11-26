@@ -1,0 +1,38 @@
+{
+  "engine": "kira-engine",
+  "generated_at": "2026-11-21T10:17:04+0600",
+  "live_calls_total": 2,
+  "providers_answered": [
+    "ollama"
+  ],
+  "providers_key_rejected": [],
+  "providers_skipped_no_key": [
+    "openrouter",
+    "groq",
+    "anthropic",
+    "gemini"
+  ],
+  "providers_tested": 1,
+  "results": [
+    {
+      "calls": 2,
+      "chat_ok": true,
+      "error": null,
+      "error_status": null,
+      "finish_reason": "stop",
+      "kind": "openai_compat",
+      "latency_ms": 224,
+      "list_models_ok": true,
+      "model": "qwen3:4b-instruct-2507-q4_K_M",
+      "model_count": 1,
+      "provider": "ollama",
+      "text_chars": 3,
+      "tier": "fast",
+      "usage": {
+        "input_tokens": 14,
+        "output_tokens": 2
+      },
+      "verdict": "answered"
+    }
+  ]
+}

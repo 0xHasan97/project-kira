@@ -1,0 +1,8 @@
+# Kira source URL, used when setup/ is run outside a checkout.
+#
+# After publishing, put the repository URL on one line below, for example:
+#   https://github.com/OWNER/REPO
+#
+# Leave it blank to use the origin remote of the checkout beside setup/,
+# or pass -RepoUrl on the command line.
+https://github.com/MdHasan097/project-kira

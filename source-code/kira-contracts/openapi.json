@@ -1,0 +1,5977 @@
+{
+  "components": {
+    "parameters": {
+      "Confirm": {
+        "description": "The engine/confirm secret from the Credential Locker, re-typed per write in the UI. Custom header, so a page on another origin cannot set it without a CORS preflight this engine never grants, and a local process would have to guess 43 characters.",
+        "in": "header",
+        "name": "X-Kira-Confirm",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "unauthorized"
+      }
+    },
+    "schemas": {
+      "ApprovalDecision": {
+        "properties": {
+          "decision": {
+            "enum": [
+              "allow",
+              "deny"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "description": "shown to the model when the answer is deny",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "type": "object"
+      },
+      "ApprovalInfo": {
+        "description": "One ask-policy tool call waiting on a decision. The arguments are what the model wanted to run, never a secret.",
+        "properties": {
+          "arguments": {
+            "type": "object"
+          },
+          "created_at": {
+            "type": "number"
+          },
+          "decided_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "risk": {
+            "enum": [
+              "read",
+              "write",
+              "exec",
+              "network"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "allowed",
+              "denied",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tool",
+          "arguments",
+          "risk",
+          "status",
+          "created_at",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "ApprovalResponse": {
+        "properties": {
+          "approval": {
+            "$ref": "#/components/schemas/ApprovalInfo"
+          }
+        },
+        "required": [
+          "approval"
+        ],
+        "type": "object"
+      },
+      "ApprovalsResponse": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/ApprovalInfo"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "approvals"
+        ],
+        "type": "object"
+      },
+      "BudgetRow": {
+        "description": "cap null means unlimited, and then remaining is null - a bar with no right edge, not a full one.",
+        "properties": {
+          "cap": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "remaining": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "used": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "cap",
+          "used",
+          "remaining"
+        ],
+        "type": "object"
+      },
+      "ChainRecord": {
+        "description": "One routing decision. Every attempt, skip, failure and tool run is visible.",
+        "properties": {
+          "approval_id": {
+            "description": "tool_approval_requested only",
+            "type": "string"
+          },
+          "call_id": {
+            "description": "tool_executed, tool_denied and tool_approval_requested",
+            "type": "string"
+          },
+          "chars": {
+            "description": "tool_executed only",
+            "type": "integer"
+          },
+          "checkpoint_id": {
+            "description": "checkpoint_created and tool_executed",
+            "type": "string"
+          },
+          "cooldown_s": {
+            "description": "failed only",
+            "type": "number"
+          },
+          "duration_ms": {
+            "description": "tool_executed for run_command",
+            "type": "integer"
+          },
+          "event": {
+            "enum": [
+              "attempt",
+              "served",
+              "failed",
+              "skipped_cooling",
+              "skipped_missing_key",
+              "skipped_config",
+              "skipped_budget",
+              "aborted_mid_stream",
+              "empty_answer",
+              "tool_executed",
+              "tool_approval_requested",
+              "tool_denied",
+              "checkpoint_created",
+              "usage_estimated",
+              "images_attached",
+              "images_dropped"
+            ],
+            "type": "string"
+          },
+          "exit_code": {
+            "description": "tool_executed for run_command",
+            "type": "integer"
+          },
+          "files": {
+            "description": "checkpoint_created only",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "tool_executed for run_command",
+            "enum": [
+              "command",
+              "test"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "ok": {
+            "description": "tool_executed only",
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "retry_in_s": {
+            "description": "skipped_cooling only",
+            "type": "number"
+          },
+          "risk": {
+            "description": "tool events",
+            "enum": [
+              "read",
+              "write",
+              "exec",
+              "network"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "description": "tool_executed only",
+            "type": "string"
+          },
+          "tool": {
+            "description": "tool_executed, tool_denied and tool_approval_requested",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "type": "object"
+      },
+      "CharacterActiveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "who goes on stage; null takes everyone off",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "CharacterActiveResponse": {
+        "properties": {
+          "active": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "type": "object"
+      },
+      "CharacterCapability": {
+        "description": "One PMX, measured by walking it. The same code writes this at import and the CLI shows it.",
+        "properties": {
+          "bones": {
+            "type": "integer"
+          },
+          "count_framing": {
+            "enum": [
+              "header",
+              "inline"
+            ],
+            "type": "string"
+          },
+          "counts": {
+            "description": "the nine section counts, each null when the walk could not earn it",
+            "properties": {
+              "bone_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "constraint_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "face_index_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "frame_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "material_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "morph_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "rigid_body_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "texture_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "vertex_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          },
+          "english_name": {
+            "type": "string"
+          },
+          "file_name": {
+            "description": "the name it arrived under",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "finger_bone_count": {
+            "type": "integer"
+          },
+          "frame_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "has_physics": {
+            "description": "at least one rigid body",
+            "type": "boolean"
+          },
+          "ik_bone_count": {
+            "type": "integer"
+          },
+          "is_character": {
+            "description": "the body test: bones and vertices, decided engine-side",
+            "type": "boolean"
+          },
+          "license_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "material_framing": {
+            "enum": [
+              "draw_and_memos",
+              "memo_only"
+            ],
+            "type": "string"
+          },
+          "missing_textures": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "morph_kinds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "morph_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "as the file wrote it, in its own script",
+            "type": "string"
+          },
+          "path": {
+            "description": "relative to the character's folder; the body is always `model.pmx`",
+            "type": "string"
+          },
+          "shared_toon_refs": {
+            "type": "integer"
+          },
+          "sphere_texture_refs": {
+            "type": "integer"
+          },
+          "standard_groups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "texture_resolved": {
+            "type": "integer"
+          },
+          "texture_status": {
+            "description": "`8/8`, `7/8 \u2014 hair.bmp absent`, or `no textures`",
+            "type": "string"
+          },
+          "textures": {
+            "items": {
+              "$ref": "#/components/schemas/TextureFinding"
+            },
+            "type": "array"
+          },
+          "trailing_bytes": {
+            "description": "bytes past the last section the walk reached",
+            "type": "integer"
+          },
+          "triangles": {
+            "description": "face_index_count / 3",
+            "type": "integer"
+          },
+          "unreadable": {
+            "description": "why nothing was measured, in words",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "description": "2.0 or 2.1; the only two this reader walks",
+            "type": "number"
+          },
+          "vertices": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "name",
+          "english_name",
+          "file_name",
+          "version",
+          "count_framing",
+          "material_framing",
+          "counts",
+          "vertices",
+          "bones",
+          "triangles",
+          "has_physics",
+          "is_character",
+          "texture_status",
+          "standard_groups",
+          "finger_bone_count",
+          "morph_names",
+          "morph_kinds",
+          "frame_names",
+          "textures",
+          "texture_resolved",
+          "missing_textures",
+          "sphere_texture_refs",
+          "shared_toon_refs",
+          "ik_bone_count",
+          "trailing_bytes",
+          "findings"
+        ],
+        "type": "object"
+      },
+      "CharacterDeleted": {
+        "properties": {
+          "deleted": {
+            "description": "the removed character's id; its folder and its pick are both gone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "CharacterImportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "a .pmx or .zip on this machine, typed or picked by the desktop app \u2014 never a device",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "CharacterList": {
+        "properties": {
+          "active": {
+            "description": "who is on stage, or null. A pointer at a folder that is gone reads null, never the stale id",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "characters": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterRow"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "characters",
+          "active"
+        ],
+        "type": "object"
+      },
+      "CharacterProfile": {
+        "description": "One character, whole: the body, the props that came with it, and every file in its folder.",
+        "properties": {
+          "companions": {
+            "items": {
+              "$ref": "#/components/schemas/CharacterCapability"
+            },
+            "type": "array"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "english_name": {
+            "type": "string"
+          },
+          "files": {
+            "description": "everything in the folder, so a missing texture is visible without a second request",
+            "items": {
+              "properties": {
+                "bytes": {
+                  "type": "integer"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "bytes"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "imported_at": {
+            "type": "string"
+          },
+          "license_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "main": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CharacterCapability"
+              }
+            ],
+            "description": "the body the stage loads, or null when the archive has none"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "schema": {
+            "description": "which report fields this profile was made from",
+            "type": "integer"
+          },
+          "source": {
+            "properties": {
+              "archive": {
+                "description": "false for a bare .pmx",
+                "type": "boolean"
+              },
+              "bytes": {
+                "type": "integer"
+              },
+              "file_name": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "file_name",
+              "sha256",
+              "bytes",
+              "archive"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "schema",
+          "id",
+          "display_name",
+          "english_name",
+          "imported_at",
+          "source",
+          "reason",
+          "companions",
+          "files"
+        ],
+        "type": "object"
+      },
+      "CharacterRow": {
+        "description": "The library list item: enough to choose a character without opening its folder. Every number here was written by the import that measured it.",
+        "properties": {
+          "bones": {
+            "type": "integer"
+          },
+          "companion_count": {
+            "description": "the other models in the same archive",
+            "type": "integer"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "english_name": {
+            "type": "string"
+          },
+          "has_physics": {
+            "type": "boolean"
+          },
+          "id": {
+            "description": "`<slug>-<8 hex>`; the folder name, and the id every other route takes",
+            "type": "string"
+          },
+          "imported_at": {
+            "description": "ISO-8601 UTC, second precision",
+            "type": "string"
+          },
+          "is_character": {
+            "description": "false when the archive held only props",
+            "type": "boolean"
+          },
+          "license_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "main_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "description": "the body's path, always `model.pmx`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "description": "why this model was chosen as the body",
+            "type": "string"
+          },
+          "sha256": {
+            "description": "of the source bytes; importing them again answers already_imported",
+            "type": "string"
+          },
+          "source_file_name": {
+            "description": "the archive or file it was imported from",
+            "type": "string"
+          },
+          "texture_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vertices": {
+            "description": "0 when there is no body",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "english_name",
+          "source_file_name",
+          "sha256",
+          "imported_at",
+          "is_character",
+          "vertices",
+          "bones",
+          "has_physics",
+          "companion_count",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ChatChunk": {
+        "description": "One SSE `data:` frame on /v1/chat/completions when stream=true.",
+        "properties": {
+          "arguments": {
+            "description": "tool_call and approval",
+            "type": "object"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody",
+            "description": "error only"
+          },
+          "finish_reason": {
+            "description": "done",
+            "type": "string"
+          },
+          "id": {
+            "description": "tool_call, approval and done",
+            "type": "string"
+          },
+          "model": {
+            "description": "done",
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "description": "tool_call only",
+            "type": "string"
+          },
+          "provider": {
+            "description": "done",
+            "nullable": true,
+            "type": "string"
+          },
+          "provider_chain": {
+            "description": "done and error",
+            "items": {
+              "$ref": "#/components/schemas/ChainRecord"
+            },
+            "type": "array"
+          },
+          "record": {
+            "$ref": "#/components/schemas/ChainRecord",
+            "description": "chain only"
+          },
+          "risk": {
+            "description": "approval only",
+            "enum": [
+              "read",
+              "write",
+              "exec",
+              "network"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "description": "done",
+            "type": "string"
+          },
+          "status": {
+            "description": "done",
+            "enum": [
+              "complete",
+              "max_steps",
+              "interrupted",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "description": "delta only",
+            "type": "string"
+          },
+          "tool": {
+            "description": "approval only",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "delta",
+              "tool_call",
+              "chain",
+              "approval",
+              "done",
+              "error"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/WireUsage",
+            "description": "done"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "ChatCompletion": {
+        "description": "Non-streaming response. Mirrors chat.completion plus Kira provenance.",
+        "properties": {
+          "choices": {
+            "items": {
+              "properties": {
+                "finish_reason": {
+                  "type": "string"
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "message": {
+                  "properties": {
+                    "content": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "tool_calls": {
+                      "items": {
+                        "$ref": "#/components/schemas/ToolCallWire"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "created": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": "integer"
+          },
+          "model": {
+            "nullable": true,
+            "type": "string"
+          },
+          "object": {
+            "const": "chat.completion",
+            "type": "string"
+          },
+          "provider": {
+            "nullable": true,
+            "type": "string"
+          },
+          "provider_chain": {
+            "items": {
+              "$ref": "#/components/schemas/ChainRecord"
+            },
+            "type": "array"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "max_steps",
+              "interrupted",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/WireUsage"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "choices",
+          "provider_chain",
+          "status",
+          "session_id"
+        ],
+        "type": "object"
+      },
+      "ChatRequest": {
+        "properties": {
+          "max_tokens": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "AUTO",
+              "FAST",
+              "POWERFUL",
+              "CUSTOM"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "nullable": true,
+            "type": "string"
+          },
+          "provider": {
+            "nullable": true,
+            "type": "string"
+          },
+          "session_id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "skill": {
+            "nullable": true,
+            "type": "string"
+          },
+          "stream": {
+            "default": false,
+            "type": "boolean"
+          },
+          "temperature": {
+            "default": 1.0,
+            "type": "number"
+          },
+          "tools_enabled": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "type": "object"
+      },
+      "CheckpointDiff": {
+        "properties": {
+          "checkpoint": {
+            "$ref": "#/components/schemas/CheckpointInfo"
+          },
+          "files": {
+            "items": {
+              "properties": {
+                "changed": {
+                  "type": "boolean"
+                },
+                "diff": {
+                  "description": "unified diff, or 'binary differs'",
+                  "type": "string"
+                },
+                "existed": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "existed",
+                "changed",
+                "diff"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "checkpoint",
+          "files"
+        ],
+        "type": "object"
+      },
+      "CheckpointFile": {
+        "description": "One file a checkpoint holds. `existed: false` means the write created it, so restoring deletes it.",
+        "properties": {
+          "blob": {
+            "description": "engine-internal blob name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "existed": {
+            "type": "boolean"
+          },
+          "path": {
+            "description": "workspace-relative, posix separators",
+            "type": "string"
+          },
+          "sha256_after": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sha256_before": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "existed"
+        ],
+        "type": "object"
+      },
+      "CheckpointInfo": {
+        "description": "One pre-write snapshot. `restore` itself takes a checkpoint whose tool is 'restore'.",
+        "properties": {
+          "call_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "number"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/CheckpointFile"
+            },
+            "type": "array"
+          },
+          "finalized_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "restored_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "scope": {
+            "enum": [
+              "files"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "open",
+              "complete",
+              "restored"
+            ],
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tool",
+          "files",
+          "status",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "CheckpointRestore": {
+        "properties": {
+          "checkpoint_id": {
+            "description": "the safety checkpoint this restore took",
+            "type": "string"
+          },
+          "conflicts": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "restored": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "restored",
+          "conflicts",
+          "checkpoint_id"
+        ],
+        "type": "object"
+      },
+      "CheckpointRestoreRequest": {
+        "properties": {
+          "force": {
+            "default": false,
+            "description": "restore over files that changed since the checkpoint",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "CheckpointsResponse": {
+        "properties": {
+          "checkpoints": {
+            "items": {
+              "$ref": "#/components/schemas/CheckpointInfo"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "checkpoints"
+        ],
+        "type": "object"
+      },
+      "ConfiguredProvider": {
+        "properties": {
+          "key_present": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "openai_compat",
+              "anthropic",
+              "gemini"
+            ],
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "needs_key": {
+            "type": "boolean"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "tier": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "tier",
+          "priority",
+          "models",
+          "key_present",
+          "needs_key"
+        ],
+        "type": "object"
+      },
+      "DailyUsage": {
+        "description": "Only days inside the selected month, oldest first: the sparkline plots exactly these points.",
+        "properties": {
+          "date": {
+            "description": "YYYY-MM-DD in UTC",
+            "type": "string"
+          },
+          "tokens": {
+            "type": "integer"
+          },
+          "turns": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "turns",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "DeletedResponse": {
+        "properties": {
+          "deleted": {
+            "description": "sessions removed",
+            "type": "integer"
+          },
+          "messages": {
+            "description": "messages removed with them",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted",
+          "messages"
+        ],
+        "type": "object"
+      },
+      "DeviceDeleted": {
+        "properties": {
+          "deleted": {
+            "description": "the revoked device's id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "DeviceInfo": {
+        "properties": {
+          "created_at": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_seen_at": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "last_seen_at"
+        ],
+        "type": "object"
+      },
+      "DevicesResponse": {
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceInfo"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "devices"
+        ],
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Kira codes: already_imported, bad_archive, budget_exhausted, character_exists, character_file_not_found, character_not_found, config_error, download_failed, download_refused, image_backend_missing, image_generation_failed, image_not_found, image_request_invalid, internal_error, llm_start_failed, llm_unavailable, model_not_found, no_pmx_in_archive, not_a_pmx, pairing_refused, pmx_truncated, pmx_version_unsupported, providers_exhausted, rate_limited, secret_store_unavailable, too_large, unauthorized, unsafe_entry, unsupported_source, unsupported_version. Provider-side failures add: provider_error, rate_limited, provider_5xx, provider_4xx, bad_stream, bad_tool_call, stream_error, plus any code string the provider itself sends, so treat this as open-ended.",
+            "type": "string"
+          },
+          "entry": {
+            "description": "what a character refusal is about, when it has a name: the archive entry that climbed out of the folder, the id that is not in the library, the source path the caller supplied. Carried beside `message` so a screen can point at the thing without parsing a sentence.",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "provider_chain": {
+            "items": {
+              "$ref": "#/components/schemas/ChainRecord"
+            },
+            "type": "array"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "status",
+          "retryable"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "FieldStateBool": {
+        "description": "One tunable boolean: what config.yaml says, what the settings table overrides, what the router uses.",
+        "properties": {
+          "base": {
+            "type": "boolean"
+          },
+          "effective": {
+            "type": "boolean"
+          },
+          "override": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "base",
+          "override",
+          "effective"
+        ],
+        "type": "object"
+      },
+      "FieldStateCap": {
+        "description": "Monthly token cap. null means unlimited at every level, so a null effective value is not 'missing'.",
+        "properties": {
+          "base": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "effective": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "override": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "base",
+          "override",
+          "effective"
+        ],
+        "type": "object"
+      },
+      "FieldStateInt": {
+        "properties": {
+          "base": {
+            "type": "integer"
+          },
+          "effective": {
+            "type": "integer"
+          },
+          "override": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "base",
+          "override",
+          "effective"
+        ],
+        "type": "object"
+      },
+      "FieldStateStr": {
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "effective": {
+            "type": "string"
+          },
+          "override": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "base",
+          "override",
+          "effective"
+        ],
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "configured": {
+            "items": {
+              "$ref": "#/components/schemas/ConfiguredProvider"
+            },
+            "type": "array"
+          },
+          "providers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProviderState"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "providers",
+          "configured"
+        ],
+        "type": "object"
+      },
+      "HealthzResponse": {
+        "description": "The one endpoint outside the version namespace, because it is how a caller finds out which namespace this engine serves. Both versions are published here: `api_version` says whether the paths still mean what the caller thinks, `contract_version` says whether the fields did.",
+        "properties": {
+          "api_version": {
+            "type": "integer"
+          },
+          "contract_version": {
+            "type": "integer"
+          },
+          "default_mode": {
+            "type": "string"
+          },
+          "ok": {
+            "const": true,
+            "type": "boolean"
+          },
+          "providers_configured": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "api_version",
+          "contract_version",
+          "providers_configured",
+          "default_mode"
+        ],
+        "type": "object"
+      },
+      "ImageDeleted": {
+        "properties": {
+          "deleted": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "ImageGenerateRequest": {
+        "properties": {
+          "cfg_scale": {
+            "description": "0-30",
+            "type": "number"
+          },
+          "height": {
+            "description": "multiple of 8, 64-2048",
+            "type": "integer"
+          },
+          "model": {
+            "description": "a name from ImagesStatus.models; absent picks the first",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "sampler": {
+            "type": "string"
+          },
+          "seed": {
+            "description": "-1 picks one and the answer carries it",
+            "type": "integer"
+          },
+          "steps": {
+            "description": "1-150",
+            "type": "integer"
+          },
+          "width": {
+            "description": "multiple of 8, 64-2048",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "type": "object"
+      },
+      "ImageModel": {
+        "description": "One checkpoint this machine can draw with. The name is the filename without its extension, and it is what a generation request names.",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "kind": {
+            "description": "safetensors, ckpt or gguf",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "filename",
+          "size_bytes",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "ImageOutput": {
+        "description": "One generated PNG and the settings that made it, as the sidecar recorded them.",
+        "properties": {
+          "backend": {
+            "description": "local for the managed executable, remote for KIRA_SD_URL",
+            "type": "string"
+          },
+          "cfg_scale": {
+            "type": "number"
+          },
+          "created_at": {
+            "description": "ISO-8601 UTC",
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "description": "the PNG's filename; the id the file and delete routes take",
+            "type": "string"
+          },
+          "negative_prompt": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "sampler": {
+            "type": "string"
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "steps": {
+            "type": "integer"
+          },
+          "url": {
+            "description": "the authenticated path the bytes are fetched from",
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "prompt",
+          "negative_prompt",
+          "model",
+          "steps",
+          "cfg_scale",
+          "width",
+          "height",
+          "seed",
+          "sampler",
+          "created_at",
+          "duration_ms",
+          "backend"
+        ],
+        "type": "object"
+      },
+      "ImagesStatus": {
+        "description": "What the Images screen needs to draw a form or say why it cannot: the engine, the checkpoints, and the gallery.",
+        "properties": {
+          "backend": {
+            "description": "local, remote, or null when neither is configured",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "backend_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine_dir": {
+            "type": "string"
+          },
+          "model_dir": {
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ImageModel"
+            },
+            "type": "array"
+          },
+          "output_dir": {
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/ImageOutput"
+            },
+            "type": "array"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "reason": {
+            "description": "why nothing can draw yet, in the words the screen shows",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "remote_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "ready",
+          "reason",
+          "backend",
+          "backend_path",
+          "remote_url",
+          "engine_dir",
+          "model_dir",
+          "output_dir",
+          "models",
+          "outputs"
+        ],
+        "type": "object"
+      },
+      "KeyRequest": {
+        "properties": {
+          "key": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
+      "KeyResponse": {
+        "description": "Presence, never the value.",
+        "properties": {
+          "key_present": {
+            "type": "boolean"
+          },
+          "key_ref": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "key_ref",
+          "key_present"
+        ],
+        "type": "object"
+      },
+      "MemoryDeleted": {
+        "properties": {
+          "deleted": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "MemoryExport": {
+        "properties": {
+          "exported_at": {
+            "type": "number"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryItem"
+            },
+            "type": "array"
+          },
+          "version": {
+            "description": "export format, not the API version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "exported_at",
+          "memories"
+        ],
+        "type": "object"
+      },
+      "MemoryHit": {
+        "properties": {
+          "created_at": {
+            "type": "number"
+          },
+          "message_id": {
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "snippet": {
+            "description": "the engine brackets the match with [ ]",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "message_id",
+          "role",
+          "snippet",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "MemoryItem": {
+        "properties": {
+          "created_at": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "fact",
+              "preference",
+              "note"
+            ],
+            "type": "string"
+          },
+          "last_used_at": {
+            "nullable": true,
+            "type": "number"
+          },
+          "origin": {
+            "enum": [
+              "user",
+              "tool",
+              "auto"
+            ],
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "session_id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "tokens_spent": {
+            "description": "the extraction call's share, origin=auto",
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "number"
+          },
+          "use_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "text",
+          "pinned",
+          "origin",
+          "created_at",
+          "updated_at",
+          "use_count"
+        ],
+        "type": "object"
+      },
+      "MemoryList": {
+        "properties": {
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryItem"
+            },
+            "type": "array"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/MemorySettings"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "memories",
+          "total",
+          "settings"
+        ],
+        "type": "object"
+      },
+      "MemoryPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "fact",
+              "preference",
+              "note"
+            ],
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "text": {
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MemorySearch": {
+        "properties": {
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryHit"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "hits"
+        ],
+        "type": "object"
+      },
+      "MemorySettings": {
+        "properties": {
+          "capture": {
+            "enum": [
+              "off",
+              "explicit"
+            ],
+            "type": "string"
+          },
+          "extract": {
+            "type": "boolean"
+          },
+          "inject": {
+            "type": "boolean"
+          },
+          "tokenizer": {
+            "description": "read-only: which index tokenizer this SQLite build gave us",
+            "enum": [
+              "trigram",
+              "unicode61"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "inject",
+          "capture",
+          "extract",
+          "tokenizer"
+        ],
+        "type": "object"
+      },
+      "MemorySettingsPatch": {
+        "additionalProperties": false,
+        "description": "a subset of the three writable switches; strict-typed, so a prose boolean like \"yes\" is 400, and `tokenizer` is not writable",
+        "properties": {
+          "capture": {
+            "enum": [
+              "off",
+              "explicit"
+            ],
+            "type": "string"
+          },
+          "extract": {
+            "type": "boolean"
+          },
+          "inject": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "MemoryWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "fact",
+              "preference",
+              "note"
+            ],
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "text": {
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "Message": {
+        "properties": {
+          "content": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+              "tool"
+            ],
+            "type": "string"
+          },
+          "tool_call_id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "type": "object"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "type": "object"
+      },
+      "MessageRow": {
+        "description": "One stored message, with the chain that produced it when it is an answer.",
+        "properties": {
+          "chain": {
+            "items": {
+              "$ref": "#/components/schemas/ChainRecord"
+            },
+            "type": "array"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "number"
+          },
+          "finish_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "max_steps",
+              "interrupted",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCallWire"
+            },
+            "type": "array"
+          },
+          "usage": {
+            "description": "Stored with engine-internal names, not the OpenAI-style wire names.",
+            "properties": {
+              "input_tokens": {
+                "type": "integer"
+              },
+              "output_tokens": {
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "role",
+          "content",
+          "status"
+        ],
+        "type": "object"
+      },
+      "MessagesResponse": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageRow"
+            },
+            "type": "array"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "messages"
+        ],
+        "type": "object"
+      },
+      "ModelInfo": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key_present": {
+            "description": "Whether the vault holds this provider's key. False means either 'a key is wanted and missing' or 'no key is wanted'; `needs_key` tells them apart.",
+            "type": "boolean"
+          },
+          "needs_key": {
+            "description": "False for a provider that asks for no credential \u2014 a local server on loopback. Read with `key_present`: false here means 'nothing to store', never 'broken'.",
+            "type": "boolean"
+          },
+          "object": {
+            "type": "string"
+          },
+          "owned_by": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "fast",
+              "powerful"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "tier",
+          "key_present",
+          "needs_key"
+        ],
+        "type": "object"
+      },
+      "ModelUsage": {
+        "properties": {
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "integer"
+          },
+          "turns": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "turns",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "ModelsResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ModelInfo"
+            },
+            "type": "array"
+          },
+          "live": {
+            "items": {
+              "$ref": "#/components/schemas/ProbeResponse"
+            },
+            "type": "array"
+          },
+          "object": {
+            "const": "list",
+            "type": "string"
+          }
+        },
+        "required": [
+          "object",
+          "data"
+        ],
+        "type": "object"
+      },
+      "OverviewResponse": {
+        "properties": {
+          "budgets": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetRow"
+            },
+            "type": "array"
+          },
+          "by_model": {
+            "items": {
+              "$ref": "#/components/schemas/ModelUsage"
+            },
+            "type": "array"
+          },
+          "by_provider": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderUsage"
+            },
+            "type": "array"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyUsage"
+            },
+            "type": "array"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "interrupted": {
+            "type": "integer"
+          },
+          "month": {
+            "type": "string"
+          },
+          "recent_issues": {
+            "items": {
+              "$ref": "#/components/schemas/RecentIssue"
+            },
+            "type": "array"
+          },
+          "refusals": {
+            "$ref": "#/components/schemas/RefusalSummary"
+          },
+          "success_rate": {
+            "description": "(turns - interrupted - failed) / turns; null when turns is 0 because 'no data' is not '0% healthy'",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/TokenSplit"
+          },
+          "turns": {
+            "description": "assistant rows in the window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "turns",
+          "tokens",
+          "success_rate",
+          "interrupted",
+          "failed",
+          "by_provider",
+          "by_model",
+          "daily",
+          "budgets",
+          "recent_issues",
+          "refusals"
+        ],
+        "type": "object"
+      },
+      "PairRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "the 8 characters the desktop showed",
+            "type": "string"
+          },
+          "name": {
+            "description": "1-40 characters, shown in the device list",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "type": "object"
+      },
+      "PairResponse": {
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/DeviceInfo"
+          },
+          "token": {
+            "description": "shown once, and only its SHA-256 is stored engine-side",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "device"
+        ],
+        "type": "object"
+      },
+      "PairingCodeResponse": {
+        "properties": {
+          "code": {
+            "description": "8 characters from 0-9 and A-Z without I, L, O or U",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "unix seconds; the code dies after 120",
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "PluginInfo": {
+        "description": "One file in the plugins directory. A bad file is 'skipped' with its reason, never a startup failure.",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "loaded",
+              "skipped"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "name",
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ProbeResponse": {
+        "description": "One live probe. A failure is ok:false with the reason, never an HTTP error, so the UI can show it inline. Probe traffic is not stored as a conversation and does not count toward a month's spend.",
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latency_ms": {
+            "description": "the one-cap completion only; null for a list-only probe",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "model_count": {
+            "type": "integer"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "sample": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "provider",
+          "ok",
+          "latency_ms",
+          "error"
+        ],
+        "type": "object"
+      },
+      "ProviderSettings": {
+        "description": "The four tunable fields, as base/override/effective after a write.",
+        "properties": {
+          "enabled": {
+            "$ref": "#/components/schemas/FieldStateBool"
+          },
+          "monthly_cap": {
+            "$ref": "#/components/schemas/FieldStateCap"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/FieldStateInt"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/FieldStateStr"
+          }
+        },
+        "required": [
+          "enabled",
+          "priority",
+          "tier",
+          "monthly_cap"
+        ],
+        "type": "object"
+      },
+      "ProviderState": {
+        "description": "Cooldown ledger view. `cooling_s` counts down; 0 means ready.",
+        "properties": {
+          "cooling_s": {
+            "type": "number"
+          },
+          "failures": {
+            "type": "integer"
+          },
+          "last_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "successes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "failures",
+          "successes",
+          "cooling_s",
+          "last_reason"
+        ],
+        "type": "object"
+      },
+      "ProviderUsage": {
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "integer"
+          },
+          "turns": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "turns",
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "ProviderView": {
+        "description": "A provider as the router currently sees it. `name`, `kind`, `base_url`, `models` and `vision` are config.yaml-only.",
+        "properties": {
+          "base_url": {
+            "type": "string"
+          },
+          "enabled": {
+            "$ref": "#/components/schemas/FieldStateBool"
+          },
+          "health": {
+            "$ref": "#/components/schemas/ProviderState"
+          },
+          "key_present": {
+            "type": "boolean"
+          },
+          "key_ref": {
+            "description": "Credential Locker ref name. Never the value.",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "openai_compat",
+              "anthropic",
+              "gemini"
+            ],
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "monthly_cap": {
+            "$ref": "#/components/schemas/FieldStateCap"
+          },
+          "name": {
+            "type": "string"
+          },
+          "needs_key": {
+            "description": "False when the stanza declares no `key_ref` and none is wanted \u2014 a local server on loopback. A dashboard must not call that row 'no key'.",
+            "type": "boolean"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/FieldStateInt"
+          },
+          "spend_this_month": {
+            "type": "integer"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/FieldStateStr"
+          },
+          "vision": {
+            "description": "True only when config.yaml says this endpoint accepts images, which is what lets a call attach a webcam frame to an answer.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "base_url",
+          "models",
+          "key_ref",
+          "key_present",
+          "needs_key",
+          "vision",
+          "enabled",
+          "priority",
+          "tier",
+          "monthly_cap",
+          "spend_this_month",
+          "health"
+        ],
+        "type": "object"
+      },
+      "ProvidersResponse": {
+        "properties": {
+          "month": {
+            "description": "YYYY-MM the spend figures are for",
+            "type": "string"
+          },
+          "orphan_settings": {
+            "description": "'provider.key' rows the settings table holds but config.yaml no longer has a provider or a tunable key for",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "providers",
+          "orphan_settings",
+          "month"
+        ],
+        "type": "object"
+      },
+      "RecentIssue": {
+        "description": "A turn that did not finish cleanly, newest first, at most ten.",
+        "properties": {
+          "created_at": {
+            "type": "number"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "interrupted",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "status",
+          "provider",
+          "model",
+          "created_at",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "RefusalRecord": {
+        "description": "A turn the plan refused before a session existed. No message row can hold it; this ledger is the record.",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "mode",
+          "model",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "RefusalSummary": {
+        "description": "Refusals in the window. They are not in `turns`: a refusal writes no message row, so counting it there would invent a turn that never started.",
+        "properties": {
+          "by_code": {
+            "items": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "code",
+                "count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/RefusalRecord"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "by_code",
+          "recent"
+        ],
+        "type": "object"
+      },
+      "SessionRow": {
+        "description": "One session with what it cost. `last_used_at` is the newest message timestamp, null for an empty session.",
+        "properties": {
+          "created_at": {
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_used_at": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "message_count": {
+            "type": "integer"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "tokens": {
+            "description": "input + output, combined, as every other total in this contract",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "created_at",
+          "message_count",
+          "tokens",
+          "last_used_at"
+        ],
+        "type": "object"
+      },
+      "SessionsResponse": {
+        "properties": {
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionRow"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions"
+        ],
+        "type": "object"
+      },
+      "SettingsRequest": {
+        "description": "Any subset of the tunable fields. null deletes that override and returns to config.yaml; monthly_cap 0 means unlimited - the two must not be confused.",
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "monthly_cap": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "priority": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SettingsResponse": {
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ProviderSettings"
+          }
+        },
+        "required": [
+          "provider",
+          "settings"
+        ],
+        "type": "object"
+      },
+      "SkillFile": {
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "builtin",
+              "user"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "loaded",
+              "skipped",
+              "shadowed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "name",
+          "status",
+          "reason",
+          "source"
+        ],
+        "type": "object"
+      },
+      "SkillInfo": {
+        "properties": {
+          "body_bytes": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "persona",
+              "method"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "builtin",
+              "user"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "kind",
+          "source",
+          "body_bytes"
+        ],
+        "type": "object"
+      },
+      "SkillsResponse": {
+        "properties": {
+          "discovery": {
+            "description": "how a model reaches a method: no methods, the names are in the use_skill schema, or search_skills finds them",
+            "enum": [
+              "none",
+              "inline",
+              "search"
+            ],
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/SkillFile"
+            },
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillInfo"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "skills",
+          "files",
+          "discovery"
+        ],
+        "type": "object"
+      },
+      "StudioDownloadRequest": {
+        "properties": {
+          "filename": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "llm",
+              "image",
+              "stt"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "url"
+        ],
+        "type": "object"
+      },
+      "StudioDownloadResult": {
+        "properties": {
+          "bytes": {
+            "type": "integer"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "filename",
+          "kind",
+          "bytes",
+          "path"
+        ],
+        "type": "object"
+      },
+      "StudioLlmPart": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "engine": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "engine_dir": {
+            "type": "string"
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model_dir": {
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/StudioModel"
+            },
+            "type": "array"
+          },
+          "reason": {
+            "description": "why a start would refuse, in the screen's words",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "available",
+          "engine",
+          "detail",
+          "models",
+          "running",
+          "model",
+          "url",
+          "model_dir",
+          "engine_dir",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "StudioLlmRequest": {
+        "properties": {
+          "model": {
+            "description": "a GGUF name; absent picks the first",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "StudioModel": {
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "filename",
+          "size_bytes",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "StudioPart": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "engine": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/StudioModel"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "engine",
+          "detail",
+          "models"
+        ],
+        "type": "object"
+      },
+      "StudioStatus": {
+        "description": "The Portable AI Studio components Kira can see, or Kira's own folders when there is no studio.",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "image": {
+            "$ref": "#/components/schemas/StudioPart"
+          },
+          "llm": {
+            "$ref": "#/components/schemas/StudioLlmPart"
+          },
+          "root": {
+            "description": "the studio folder, or null",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stt": {
+            "$ref": "#/components/schemas/StudioPart"
+          },
+          "tts": {
+            "$ref": "#/components/schemas/StudioPart"
+          }
+        },
+        "required": [
+          "root",
+          "available",
+          "image",
+          "llm",
+          "stt",
+          "tts"
+        ],
+        "type": "object"
+      },
+      "TextureFinding": {
+        "properties": {
+          "declared": {
+            "description": "the path the material table wrote, verbatim: `tex\\\\\u989c.tga` stays a windows path",
+            "type": "string"
+          },
+          "escapes": {
+            "description": "the declared path points outside the character folder: never fetched",
+            "type": "boolean"
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "format": {
+            "description": "png/bmp/tga/... from the bytes, '' when unread",
+            "type": "string"
+          },
+          "relative": {
+            "description": "normalised to posix, relative to the model's own folder",
+            "type": "string"
+          },
+          "size": {
+            "description": "bytes on disk, null when it does not exist",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "declared",
+          "relative",
+          "exists",
+          "format",
+          "escapes"
+        ],
+        "type": "object"
+      },
+      "TokenSplit": {
+        "properties": {
+          "input": {
+            "type": "integer"
+          },
+          "output": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "input",
+          "output"
+        ],
+        "type": "object"
+      },
+      "ToolCallWire": {
+        "properties": {
+          "arguments": {
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "arguments"
+        ],
+        "type": "object"
+      },
+      "ToolInfo": {
+        "description": "One callable tool: its JSON schema, the risk class, where it came from and what it is set to now.",
+        "properties": {
+          "default_policy": {
+            "enum": [
+              "allow",
+              "ask",
+              "deny"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "overridden": {
+            "type": "boolean"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "policy": {
+            "description": "override if set, else the default",
+            "enum": [
+              "allow",
+              "ask",
+              "deny"
+            ],
+            "type": "string"
+          },
+          "risk": {
+            "enum": [
+              "read",
+              "write",
+              "exec",
+              "network"
+            ],
+            "type": "string"
+          },
+          "source": {
+            "description": "'builtin' or 'plugin:<file>'",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "parameters",
+          "risk",
+          "source",
+          "default_policy",
+          "policy",
+          "overridden"
+        ],
+        "type": "object"
+      },
+      "ToolPolicyRequest": {
+        "description": "null deletes the override and returns the tool to its risk default.",
+        "properties": {
+          "policy": {
+            "enum": [
+              "allow",
+              "ask",
+              "deny",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "ToolPolicyResponse": {
+        "properties": {
+          "tool": {
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "overridden": {
+                "type": "boolean"
+              },
+              "policy": {
+                "enum": [
+                  "allow",
+                  "ask",
+                  "deny"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "policy",
+              "overridden"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "type": "object"
+      },
+      "ToolsResponse": {
+        "properties": {
+          "plugins": {
+            "items": {
+              "$ref": "#/components/schemas/PluginInfo"
+            },
+            "type": "array"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/components/schemas/ToolInfo"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tools",
+          "plugins"
+        ],
+        "type": "object"
+      },
+      "VoiceStage": {
+        "description": "One half of a call. `available` is whether the configured mode can actually run here; `detail` names the missing install or provider problem verbatim, so a client never has to guess why listening or speaking is off.",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "local",
+              "remote",
+              "off"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "available",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "VoiceStatus": {
+        "properties": {
+          "limits": {
+            "properties": {
+              "max_utterance_s": {
+                "description": "Longest single utterance the VAD will hand to STT.",
+                "type": "integer"
+              },
+              "silence_ms": {
+                "description": "Quiet time that closes an utterance.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "max_utterance_s",
+              "silence_ms"
+            ],
+            "type": "object"
+          },
+          "stt": {
+            "$ref": "#/components/schemas/VoiceStage"
+          },
+          "tts": {
+            "$ref": "#/components/schemas/VoiceStage"
+          },
+          "vision": {
+            "description": "The provider webcam frames would go to, or null when no enabled provider declares `vision: true` \u2014 then frames stay on this device.",
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider",
+              "model"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "stt",
+          "tts",
+          "vision",
+          "limits"
+        ],
+        "type": "object"
+      },
+      "WireUsage": {
+        "properties": {
+          "completion_tokens": {
+            "type": "integer"
+          },
+          "estimated": {
+            "default": false,
+            "description": "true when the provider sent no usage and the engine estimated it",
+            "type": "boolean"
+          },
+          "prompt_tokens": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt_tokens",
+          "completion_tokens"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Kira spine",
+    "version": "2"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthzResponse"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Liveness, no auth"
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletion"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "description": "SSE frames, one ChatChunk per `data:` line",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatChunk"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "chat.completion, or text/event-stream when stream=true"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error / model_not_found / invalid request body"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "budget_exhausted - every candidate had reached its monthly cap"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "secret_store_unavailable / internal_error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "provider_* / bad_stream \u2014 the turn had no other provider to fall back to"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "providers_exhausted"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/kira/approvals": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalsResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Tool calls waiting on a decision"
+      }
+    },
+    "/v1/kira/approvals/{approval_id}": {
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 not_found - no approval has ever had that id"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "409 not_pending - the approval already expired or was decided"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Allow or deny one pending tool call"
+      }
+    },
+    "/v1/kira/characters": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterList"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The library, and who is on stage"
+      },
+      "post": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so no character can be added to this machine or taken off stage from another one.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterRow"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "400 unsupported_source - no file there, or not a .pmx or .zip; also unsafe_entry when an archive entry climbs out of the folder, bad_archive, no_pmx_in_archive, and the three pmx_* refusals"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "409 already_imported - those bytes are already in the library, and the message names the character; character_exists is the same answer for a different id collision. Nothing was overwritten"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "413 too_large - over the archive, entry, expanded or expansion-ratio caps, or more entries than Kira unpacks"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Import a character from a path on this machine"
+      }
+    },
+    "/v1/kira/characters/active": {
+      "put": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so no character can be added to this machine or taken off stage from another one.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterActiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterActiveResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 character_not_found - the library has no character with that id to put on stage"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Put a character on stage, or take everyone off"
+      }
+    },
+    "/v1/kira/characters/{character_id}": {
+      "delete": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterDeleted"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 character_not_found - no character in the library has that id"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete an imported character and its files"
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterProfile"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 character_not_found - no character in the library has that id \u2014 and an id that could never name a folder, because it has a separator, a NUL, or a leading dot, answers the same way"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One character, whole"
+      }
+    },
+    "/v1/kira/characters/{character_id}/file": {
+      "get": {
+        "description": "The token is the bearer header, never a query parameter: a URL with a secret in it is a URL that ends up in an access log. A phone that paired may fetch this \u2014 showing the avatar is a read \u2014 and `Content-Length` is the file's, so a 45 MB body streams instead of buffering.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "relative to the character's own folder, e.g. `model.pmx` or `tex/\u989c.png`. Dot-dot segments that cancel themselves inside the folder are allowed; a path that resolves outside it is not, after any percent-decoding and through a symlink",
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "the bytes, with the media type the extension says: application/octet-stream for .pmx, image/png, image/bmp, image/x-tga, image/vnd-directx, application/json for the profile"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "400 unsafe_entry - absolute, escaping, empty, or NUL-bearing \u2014 unsupported_source is the other 400 here: an extension the stage does not load"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 character_not_found - that id is not in the library; character_file_not_found is the other 404 \u2014 the folder exists and does not have that file, which is what a texture shipped apart from its model looks like"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One file from a character's folder: the model, a texture, or its profile"
+      }
+    },
+    "/v1/kira/characters/{character_id}/mesh": {
+      "get": {
+        "description": "Little-endian and consumed to the last byte: `KRM1` | u32 format | u32 vertex | u32 face index | u32 bone | u32 material | u32 texture | u32 vertex morph, then the position, normal, uv, skin, face, texture, material, bone and morph blocks in that order. The path is the library's own \u2014 the profile the importer wrote names the model \u2014 so a caller can ask for nothing that is not already here. A paired device may ask: showing the avatar is a read.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "the KRM1 blob; the format version is the word after the magic, and a stage that does not know that number refuses the bytes instead of drawing them"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "400 pmx_truncated - the model on disk is not certifiable \u2014 its morph table had to be searched for a boundary, or the walk left bytes it could not place, or it stopped before a count. not_a_pmx is the other 400: those bytes are not a PMX at all"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 character_not_found - that id is not in the library; character_file_not_found is the other 404 \u2014 a character with no body to put on stage, which is what a prop-only archive looks like"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One character's body as a KRM1 mesh: positions, skin, faces, materials, bones, vertex morphs"
+      }
+    },
+    "/v1/kira/checkpoints": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "session_id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointsResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recent pre-write snapshots"
+      }
+    },
+    "/v1/kira/checkpoints/{checkpoint_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "checkpoint_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointDiff"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "One checkpoint with a per-file diff"
+      }
+    },
+    "/v1/kira/checkpoints/{checkpoint_id}/restore": {
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "checkpoint_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckpointRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointRestore"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 not_found - no checkpoint has ever had that id"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "409 checkpoint_conflict - a file changed since the checkpoint; resend with force"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Restore the files a checkpoint holds"
+      }
+    },
+    "/v1/kira/devices": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The devices allowed to read and chat"
+      }
+    },
+    "/v1/kira/devices/{device_id}": {
+      "delete": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDeleted"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 not_found - no device has ever had that id"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Revoke a device; its token stops authenticating immediately"
+      }
+    },
+    "/v1/kira/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Provider cooldown snapshot"
+      }
+    },
+    "/v1/kira/images": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImagesStatus"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The local image workspace: engine, models, gallery"
+      }
+    },
+    "/v1/kira/images/file/{name}": {
+      "get": {
+        "description": "The token is the bearer header, never a query parameter. The name is checked against the shape this workspace writes and resolved inside the outputs folder, so no caller string becomes a path.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "the PNG"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 image_not_found - no image with that name was written by this workspace"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The bytes of one generated PNG"
+      }
+    },
+    "/v1/kira/images/generate": {
+      "post": {
+        "description": "Needs the bearer token AND the typed X-Kira-Confirm secret: a generation writes a file into the user's gallery, and every bearer write in Kira carries the same gate. Generation is minutes on a CPU, so the work runs off the event loop and the chat stream keeps flowing. The PNG and a JSON sidecar land in the images/outputs folder together; the answer is the row the gallery will show after a restart.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageOutput"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "400 image_request_invalid - an empty prompt, a size that is not a multiple of 8, or a sampler name the engine cannot take; model_not_found is the other 400 \u2014 the name is not a checkpoint in the images folder"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "502 image_generation_failed - the engine started and failed, or returned something that is not a PNG"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "503 image_backend_missing - no engine executable and no KIRA_SD_URL, or no checkpoint in the images folder; the message names the folder to fill"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Draw one image locally with stable-diffusion.cpp"
+      }
+    },
+    "/v1/kira/images/{name}": {
+      "delete": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageDeleted"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 image_not_found - no image with that name was written by this workspace"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Forget one generated image and its sidecar"
+      }
+    },
+    "/v1/kira/memory": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "filter by kind; an absent, empty or whitespace-only value means \"no filter\", while a non-blank value outside the enum is 400 config_error",
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "enum": [
+                "fact",
+                "preference",
+                "note"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pinned",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "values outside 1..200 are clamped to them, not refused",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryList"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Facts, newest first; `query` searches them"
+      },
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryItem"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Keep one fact"
+      }
+    },
+    "/v1/kira/memory/export": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryExport"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every fact, as JSON"
+      }
+    },
+    "/v1/kira/memory/search": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "values outside 1..50 are clamped to them, not refused",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySearch"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Ranked snippets over saved conversation text"
+      }
+    },
+    "/v1/kira/memory/settings": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySettings"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The three switches plus the tokenizer in use"
+      },
+      "put": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemorySettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySettings"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set any subset of the three switches"
+      }
+    },
+    "/v1/kira/memory/{memory_id}": {
+      "delete": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryDeleted"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 not_found - no memory has ever had that id"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Forget one fact"
+      },
+      "patch": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryItem"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "404 not_found - no memory has ever had that id"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Edit text, kind or pin"
+      }
+    },
+    "/v1/kira/overview": {
+      "get": {
+        "parameters": [
+          {
+            "description": "YYYY-MM; default is the current UTC month; junk is config_error 400",
+            "in": "query",
+            "name": "month",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Month aggregates for the Overview screen"
+      }
+    },
+    "/v1/kira/pair": {
+      "post": {
+        "description": "No bearer token. A code is short-lived and single use, and minting one needs the desktop's engine token plus the confirm secret.",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "429 rate_limited - more than ten pairing attempts in a minute"
+          }
+        },
+        "security": [],
+        "summary": "Exchange a pairing code for a device token"
+      }
+    },
+    "/v1/kira/pairing-code": {
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingCodeResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Mint a single-use pairing code, good for 120 seconds"
+      }
+    },
+    "/v1/kira/providers": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvidersResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Merged view + key presence + spend + health + orphans"
+      }
+    },
+    "/v1/kira/providers/{name}/cooldown": {
+      "delete": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so credentials and provider controls stay on the desktop.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvidersResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Drop cooling for one provider now"
+      }
+    },
+    "/v1/kira/providers/{name}/key": {
+      "delete": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so no key can be stored or forgotten from another device.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Forget a provider key"
+      },
+      "put": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so no key can be stored or forgotten from another device.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Store a provider key in the Credential Locker"
+      }
+    },
+    "/v1/kira/providers/{name}/probe": {
+      "post": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so credentials and provider controls stay on the desktop.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "list_models plus one 8-token completion"
+      }
+    },
+    "/v1/kira/providers/{name}/settings": {
+      "put": {
+        "description": "Needs the engine token itself and nothing typed: a paired device token is refused with 401 unauthorized, so credentials and provider controls stay on the desktop.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set any subset of the tunable fields"
+      }
+    },
+    "/v1/kira/sessions": {
+      "delete": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete every session and message"
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recent sessions"
+      }
+    },
+    "/v1/kira/sessions/{session_id}": {
+      "delete": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delete one session and its messages"
+      }
+    },
+    "/v1/kira/sessions/{session_id}/messages": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Message history"
+      }
+    },
+    "/v1/kira/skills": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillsResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every loaded skill and every file's status"
+      }
+    },
+    "/v1/kira/studio": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioStatus"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "The studio components and the local chat server"
+      }
+    },
+    "/v1/kira/studio/download": {
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudioDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioDownloadResult"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Download one model from Hugging Face into the folder its loader reads"
+      }
+    },
+    "/v1/kira/studio/llm/start": {
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudioLlmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioStatus"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Start llama.cpp on one GGUF and add it as a local provider"
+      }
+    },
+    "/v1/kira/studio/llm/stop": {
+      "post": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioStatus"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Stop llama.cpp and remove the local provider"
+      }
+    },
+    "/v1/kira/tools": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolsResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Every callable tool and every plugin file"
+      }
+    },
+    "/v1/kira/tools/{name}": {
+      "put": {
+        "description": "Needs the bearer token AND the X-Kira-Confirm secret: a missing, wrong or bearer-equal confirm is 401 unauthorized.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Confirm"
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolPolicyResponse"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set or clear one tool's policy"
+      }
+    },
+    "/v1/kira/voice": {
+      "get": {
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceStatus"
+                }
+              }
+            },
+            "description": "ok"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "config_error - unknown provider, unknown field, or an out-of-range value"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Which speech and vision engines a real-time call gets, and why a stage is unavailable"
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "parameters": [
+          {
+            "description": "Probe each provider",
+            "in": "query",
+            "name": "live",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
+              }
+            },
+            "description": "model catalogue"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Configured models, optionally probed live"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8901"
+    }
+  ]
+}
