@@ -23,6 +23,8 @@ param(
     [switch]$NoLaunch,
     [switch]$NoShortcut,
     [switch]$SkipBuild,
+    [switch]$SkipModels,
+    [switch]$ModelsOnly,
     [switch]$NoPrereqInstall,
     [switch]$NoPrompt
 )
@@ -348,6 +350,78 @@ function Install-Kira($Tools, [string]$Root) {
     }
 }
 
+function Install-LocalModels([string]$Root) {
+    $folder = Join-Path $Root "kira-3dmodels"
+    if (-not (Test-Path -LiteralPath $folder -PathType Container)) {
+        Say "No local 3D models folder; skipping model import."
+        return
+    }
+
+    $archives = @(Get-ChildItem -LiteralPath $folder -File |
+        Where-Object { $_.Extension -in @(".zip", ".pmx") })
+    if ($archives.Count -eq 0) {
+        Say "No local 3D model archives found; the avatar library stays as it is."
+        return
+    }
+    if ($SkipModels) {
+        Say ("Skipping {0} local 3D model archive(s) (-SkipModels)." -f $archives.Count)
+        return
+    }
+
+    $venvPython = Join-Path $Root "kira-engine\.venv\Scripts\python.exe"
+    if (-not (Test-Path -LiteralPath $venvPython)) {
+        Say "The engine environment is missing; run setup once before importing models."
+        return
+    }
+
+    Say ("Importing {0} local 3D model archive(s)..." -f $archives.Count)
+    $previousDataDir = $env:KIRA_DATA_DIR
+    $previousErrorAction = $ErrorActionPreference
+    $errorFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $env:KIRA_DATA_DIR = Join-Path $Root ".kira-data"
+        # A refused archive writes to stderr and exits 1 by design. With EAP=Stop a native
+        # stderr redirect would turn that report into a terminating error and abort the
+        # whole install, so the child's stream is data here, not a PowerShell failure.
+        $ErrorActionPreference = "Continue"
+        $raw = & $venvPython -m kira characters import-dir $folder 2> $errorFile
+        $code = $LASTEXITCODE
+        $errors = [string](Get-Content -LiteralPath $errorFile -Raw -ErrorAction SilentlyContinue)
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+        if ($null -eq $previousDataDir) {
+            Remove-Item Env:KIRA_DATA_DIR -ErrorAction SilentlyContinue
+        } else {
+            $env:KIRA_DATA_DIR = $previousDataDir
+        }
+        Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
+    }
+
+    $text = (($raw | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if (-not $text) {
+        Say ("Could not import the local models. {0}" -f $errors.Trim())
+        return
+    }
+    try {
+        $summary = $text | ConvertFrom-Json
+    } catch {
+        Say "Could not read the model import report; the app still starts."
+        return
+    }
+
+    $counts = $summary.counts
+    Say ("3D models: {0} imported, {1} already present, {2} refused." -f
+        $counts.imported, $counts.already_imported, $counts.failed)
+    foreach ($row in @($summary.failed)) {
+        $detail = [string]$row.error
+        if ($detail.Length -gt 180) { $detail = $detail.Substring(0, 177) + "..." }
+        Say ("  refused {0}: {1}" -f $row.file, $detail)
+    }
+    if ($code -ne 0) {
+        Say "Some local models were refused; Kira still starts."
+    }
+}
+
 function New-Shortcut([string]$Root) {
     try {
         $desktop = [Environment]::GetFolderPath("Desktop")
@@ -379,6 +453,12 @@ try {
         $tools = Ensure-Prerequisites
         Say ("Python: {0} {1}" -f $tools.Python.Exe, ($tools.Python.Args -join " "))
         Say ("Node: v{0}" -f $tools.Node)
+        $modelFolder = Join-Path $root "kira-3dmodels"
+        if (Test-Path -LiteralPath $modelFolder -PathType Container) {
+            $modelCount = @(Get-ChildItem -LiteralPath $modelFolder -File |
+                Where-Object { $_.Extension -in @(".zip", ".pmx") }).Count
+            Say ("Local 3D models: {0} archive(s) ready to import." -f $modelCount)
+        }
         Say "Check passed. Nothing was installed."
         exit 0
     }
@@ -400,8 +480,18 @@ try {
         exit 0
     }
 
+    if ($ModelsOnly) {
+        $venvPython = Join-Path $root "kira-engine\.venv\Scripts\python.exe"
+        if (-not (Test-Path -LiteralPath $venvPython)) {
+            Fail "No engine environment yet. Run Kira-Setup.cmd once without -ModelsOnly first."
+        }
+        Install-LocalModels $root
+        exit 0
+    }
+
     $tools = Ensure-Prerequisites
     Install-Kira $tools $root
+    Install-LocalModels $root
     if (-not $NoShortcut) { New-Shortcut $root }
 
     if ($NoLaunch) {

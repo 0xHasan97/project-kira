@@ -17,6 +17,16 @@ kira-chat/public/icons/
 # Imported character libraries (unit 11): licensed models the user imported from their own disk.
 characters/
 
+# Local 3D character archives: licensed to the user, imported locally, never redistributed.
+kira-3dmodels/*.zip
+kira-3dmodels/*.pmx
+kira-3dmodels/*.7z
+kira-3dmodels/*.rar
+kira-3dmodels/**/*.zip
+kira-3dmodels/**/*.pmx
+kira-3dmodels/**/*.7z
+kira-3dmodels/**/*.rar
+
 # Local environment overrides never belong in a public repository.
 .env
 .env.local

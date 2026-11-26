@@ -2243,6 +2243,76 @@ def import_from_path(
     return import_character(directory, data, source_name=source_name or source.name)
 
 
+def import_directory(directory: "Path | str", source_dir: "Path | str") -> dict:
+    """Import every ``.pmx`` and ``.zip`` in *source_dir*, one refusal at a time.
+
+    Setup points this at ``kira-3dmodels/`` and the same function serves anyone who keeps a folder of
+    licensed archives. Each file goes through :func:`import_from_path`, so the suffix, size and archive
+    rules are exactly the ones a single import uses. A file already in the library is reported as
+    ``already_imported`` instead of aborting the run, and a broken file is recorded with its code while
+    the rest of the folder still lands. The source folder is never modified.
+    """
+    source = Path(source_dir)
+    if not source.is_dir():
+        raise UnsupportedSource(
+            f"'{source}' is not a folder; import-dir takes a folder of .pmx or .zip files",
+            entry=str(source),
+        )
+    try:
+        candidates = sorted(
+            (
+                path
+                for path in source.iterdir()
+                if path.is_file() and path.suffix.lower() in SOURCE_SUFFIXES
+            ),
+            key=lambda path: path.name.casefold(),
+        )
+    except OSError as exc:
+        raise UnsupportedSource(
+            f"cannot read the model folder '{source}' ({exc.strerror or exc.__class__.__name__})",
+            entry=str(source),
+        ) from exc
+
+    imported: list[dict] = []
+    already: list[dict] = []
+    failed: list[dict] = []
+    for path in candidates:
+        try:
+            entry = import_from_path(directory, path)
+        except CharacterError as exc:
+            if exc.code == ALREADY_IMPORTED:
+                marker = "already imported: "
+                ident = exc.message[len(marker):] if exc.message.startswith(marker) else None
+                already.append({"file": path.name, "id": ident})
+            else:
+                failed.append({"file": path.name, "code": exc.code, "error": exc.message})
+        except KiraError as exc:
+            failed.append({"file": path.name, "code": exc.code, "error": exc.message})
+        else:
+            imported.append(
+                {
+                    "file": path.name,
+                    "id": entry.id,
+                    "display_name": entry.profile.get("display_name"),
+                    "english_name": entry.profile.get("english_name"),
+                }
+            )
+
+    return {
+        "source_dir": str(source),
+        "library_dir": str(Path(directory)),
+        "counts": {
+            "found": len(candidates),
+            "imported": len(imported),
+            "already_imported": len(already),
+            "failed": len(failed),
+        },
+        "imported": imported,
+        "already_imported": already,
+        "failed": failed,
+    }
+
+
 #: The extensions a stage asks for, and what it must be told they are. A type missing from this table is
 #: refused before the disk is read, which is what keeps this from being a file server: a character folder
 #: holds a model, its textures and its profile, and an `.html` in it would be an answer this engine sends

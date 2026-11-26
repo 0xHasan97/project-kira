@@ -227,3 +227,89 @@ def test_removing_the_character_on_stage_takes_it_off_stage_in_the_same_call(dat
 def test_removing_a_character_that_is_not_there_is_refused(data_dir, capsys):
     assert run(data_dir, "remove", "nobody-00000000", "--yes") == 1
     assert "character_not_found" in capsys.readouterr().err
+
+# --- import-dir: the local model pack ---------------------------------------------------------------
+
+def pack(tmp_path, *archives):
+    folder = tmp_path / "models"
+    folder.mkdir()
+    for name, data in archives:
+        (folder / name).write_bytes(data)
+    return folder
+
+
+def other_zip() -> bytes:
+    return archive({
+        "Other.pmx": write_pmx(**BODY, name="另一个人", name_en="Other"),
+        "Other/tex/颜.png": b"png",
+    })
+
+
+def test_import_dir_lands_every_archive_and_says_what_it_did(data_dir, ellen_zip, tmp_path, capsys):
+    folder = pack(tmp_path, ("a-ellen.zip", ellen_zip.read_bytes()), ("b-other.zip", other_zip()))
+
+    assert run(data_dir, "import-dir", str(folder)) == 0
+    summary = printed_json(capsys)
+
+    assert summary["counts"] == {
+        "found": 2, "imported": 2, "already_imported": 0, "failed": 0,
+    }
+    assert [row["file"] for row in summary["imported"]] == ["a-ellen.zip", "b-other.zip"]
+    assert {row["display_name"] for row in summary["imported"]} == {"艾莲", "另一个人"}
+    assert len(list_characters(library(data_dir))) == 2
+
+
+def test_import_dir_is_idempotent_by_content(data_dir, ellen_zip, tmp_path, capsys):
+    folder = pack(tmp_path, ("ellen.zip", ellen_zip.read_bytes()))
+
+    assert run(data_dir, "import-dir", str(folder)) == 0
+    capsys.readouterr()
+    assert run(data_dir, "import-dir", str(folder)) == 0
+    summary = printed_json(capsys)
+
+    assert summary["counts"] == {
+        "found": 1, "imported": 0, "already_imported": 1, "failed": 0,
+    }
+    assert summary["already_imported"][0]["id"].startswith("ellen-")
+    assert len(list_characters(library(data_dir))) == 1
+
+
+def test_import_dir_keeps_the_good_files_when_one_archive_is_broken(data_dir, ellen_zip, tmp_path, capsys):
+    folder = pack(tmp_path, ("a-good.zip", ellen_zip.read_bytes()), ("b-broken.zip", b"not a zip"))
+
+    assert run(data_dir, "import-dir", str(folder)) == 0
+    out, err = capsys.readouterr()
+    summary = json.loads(out)
+    assert summary["counts"] == {
+        "found": 2, "imported": 1, "already_imported": 0, "failed": 1,
+    }
+    assert summary["failed"][0]["file"] == "b-broken.zip"
+    assert summary["failed"][0]["code"] == "bad_archive"
+    assert "b-broken.zip" in err
+    assert len(list_characters(library(data_dir))) == 1
+
+
+def test_import_dir_with_only_broken_archives_exits_one(data_dir, tmp_path, capsys):
+    folder = pack(tmp_path, ("broken.zip", b"not a zip"))
+
+    assert run(data_dir, "import-dir", str(folder)) == 1
+    summary = printed_json(capsys)
+    assert summary["counts"]["failed"] == 1
+    assert list_characters(library(data_dir)) == ()
+
+
+def test_import_dir_requires_a_folder(data_dir, tmp_path, capsys):
+    assert run(data_dir, "import-dir", str(tmp_path / "missing")) == 2
+    assert "no folder" in capsys.readouterr().err
+
+
+def test_import_dir_on_an_empty_folder_is_a_no_op(data_dir, tmp_path, capsys):
+    folder = tmp_path / "empty"
+    folder.mkdir()
+
+    assert run(data_dir, "import-dir", str(folder)) == 0
+    summary = printed_json(capsys)
+    assert summary["counts"] == {
+        "found": 0, "imported": 0, "already_imported": 0, "failed": 0,
+    }
+

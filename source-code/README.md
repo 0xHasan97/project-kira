@@ -139,6 +139,7 @@ before or after the verb.
 | `kira-engine settings list` | every stored override, with `orphan: true` on rows the merge refuses |
 | `kira-engine settings clear groq monthly_cap --yes` | forget one override, or a provider's whole set (`settings clear groq --yes`) |
 | `kira-engine characters import PATH` | copy one `.pmx`, or a `.zip` that carries one with its textures, into `<data>/characters/` — the file stays where it is and nothing is downloaded |
+| `kira-engine characters import-dir PATH` | import every `.pmx` and `.zip` in a folder; duplicates are reported by SHA-256 and broken archives do not stop the rest (`import-dir` is what setup uses for a local `kira-3dmodels/`) |
 | `kira-engine characters list` | every imported character with the one on stage, read from the profiles so no 45 MB model is re-walked |
 | `kira-engine characters show ID` | one profile whole: counts, textures resolved or missing, morph and frame names, and the licence text that came with the file |
 | `kira-engine characters use ID` | put that character on stage (`characters use --off` takes everyone off) |
@@ -149,6 +150,13 @@ before or after the verb.
 `characters` is the same engine code the avatar screen calls, so a model the CLI refused is a model the
 dashboard refuses too. Skins are licensed downloads the user already owns: they are copied from a path the
 user names, never fetched, and `<data>/characters/` is git-ignored so one can't end up in a repo or a build.
+
+`setup\Kira-Setup.cmd` also looks for a local `kira-3dmodels/` folder and imports its
+`.zip`/`.pmx` files through the same `characters import-dir` path. That folder is a
+drop point, not a shipped pack: the repository publishes no model files, and the
+root `.gitignore` excludes the media. Use `-SkipModels` to leave it alone, or
+`-ModelsOnly` to re-import after adding a file without rebuilding the UI. See
+`kira-3dmodels/README.md` for the licence rule.
 
 `--backend memory` keeps secrets in the process instead of the Locker: tests and
 the browser-pass lab only, because a memory vault is per-process and nothing
@@ -836,7 +844,7 @@ the mic path.
 ## Checks
 
 ```bash
-cd kira-engine && .venv/Scripts/python -m pytest -q   # 881 tests (+9 skipped), every provider faked; the live suite is skipped
+cd kira-engine && .venv/Scripts/python -m pytest -q   # 887 tests (+9 skipped), every provider faked; the live suite is skipped
 cd kira-chat  && npm run check                        # tsc --noEmit, then vitest (55 files, 561 tests, jsdom), then vite build
 node kira-contracts/check-drift.mjs                   # cross-language contract gate: v2, 86 schemas, 6 chunk types, 16 chain events
 ```

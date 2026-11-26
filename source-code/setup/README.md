@@ -52,6 +52,8 @@ asks once.
 | `-RepoUrl URL` | Repository or direct ZIP URL for a standalone download. |
 | `-Branch NAME` | Branch to download; default tries `main`, then `master`. |
 | `-SkipBuild` | Install the engine only; skip UI packages and the build. |
+| `-SkipModels` | Do not import the local `kira-3dmodels/` folder. |
+| `-ModelsOnly` | Re-import local models into an existing install; no pip, npm, build, or shortcut. |
 | `-NoPrereqInstall` | Do not install missing Python/Node with `winget`. |
 | `-NoLaunch` | Install and make the shortcut without starting Kira. |
 | `-NoShortcut` | Do not write `Kira.lnk` to the desktop. |
@@ -63,7 +65,18 @@ Examples:
 .\Kira-Setup.cmd -CheckOnly
 .\Kira-Setup.cmd -NoLaunch -NoShortcut
 .\Kira-Setup.cmd -RepoUrl https://github.com/OWNER/REPO -InstallDir D:\Apps\Kira
+.\Kira-Setup.cmd -ModelsOnly
 ```
+
+## Local 3D models
+
+Put `.zip` or `.pmx` files you are licensed to use in `kira-3dmodels/` beside
+`run_kira.py`. Setup detects the folder, imports every archive into
+`<install>\.kira-data\characters`, and leaves the source files where they are.
+The import is idempotent, so running setup again reports duplicates instead of
+copying them twice. `-SkipModels` opts out; `-ModelsOnly` re-imports without
+reinstalling packages. The repository publishes no model archives; each
+archive's own readme or `使用规则` file still governs what you may do with it.
 
 ## Publishing this as source
 

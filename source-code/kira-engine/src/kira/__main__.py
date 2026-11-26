@@ -13,6 +13,7 @@ from .characters import (
     get_active,
     get_character,
     import_character,
+    import_directory,
     list_characters,
     read_source_capped,
     remove_character,
@@ -197,6 +198,18 @@ def cmd_characters(args: argparse.Namespace) -> int:
     config = load_config(_data_dir(args))
     directory = config.characters_dir
     store = Store(config.db_path)
+
+    if args.op == "import-dir":
+        source = Path(args.path)
+        if not source.is_dir():
+            print(f"[kira] no folder to import from at '{args.path}'", file=sys.stderr)
+            return 2
+        summary = import_directory(directory, source)
+        print(json.dumps(summary, indent=2))
+        for row in summary["failed"]:
+            print(f"[kira] {row['code']}: {row['file']}: {row['error']}", file=sys.stderr)
+        counts = summary["counts"]
+        return 0 if counts["found"] == 0 or counts["imported"] or counts["already_imported"] else 1
 
     if args.op == "import":
         source = Path(args.path)
@@ -447,6 +460,9 @@ def build_parser() -> argparse.ArgumentParser:
     cimp = csub.add_parser("import", parents=[common], help="copy a .pmx or .zip into the library")
     cimp.add_argument("path")
     cimp.set_defaults(func=cmd_characters)
+    cdir = csub.add_parser("import-dir", parents=[common], help="import every .pmx and .zip in a folder, skipping duplicates")
+    cdir.add_argument("path")
+    cdir.set_defaults(func=cmd_characters)
     csub.add_parser("list", parents=[common], help="every character, with the one on stage").set_defaults(func=cmd_characters)
     cshow = csub.add_parser("show", parents=[common], help="one character's whole profile, report included")
     cshow.add_argument("id")

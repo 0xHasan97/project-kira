@@ -58,3 +58,12 @@ Not yet ported, with the reason on record:
   only by the distilled `rea` method above; Mia's vendored copy was not used.
 
 | Avatar stage (`pmx.ts`, `krm1.ts`, `load.ts`, `stage.ts`, `mesh.py`, `characters.py`) | MYRAA 3D voice companion PMX model format, character import concept | none — all rights reserved | no — format spec measured from donor archives, loader and renderer written from spec; no donor code executed or copied |
+
+### Local 3D model archives
+
+No PMX or texture archive is vendored in this repository. `kira-3dmodels/` is a
+documented local drop point: setup imports files the user already has into that
+machine's `<data>/characters`, and `.gitignore` excludes the media. The donor
+archives used to measure the format remain outside the repository; their own
+readmes govern reuse and several forbid redistribution. The import code reads a
+user-supplied file and never downloads one.
