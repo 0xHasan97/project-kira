@@ -27,9 +27,9 @@ keys are entered in **Providers**, not in a console.
 ## Using it from GitHub
 
 On the repository page choose **Code -> Download ZIP**, extract it, and
-double-click `setup\Kira-Setup.cmd`. If the archive contains a `source-code`
-folder, open `source-code\setup\Kira-Setup.cmd` instead. That ZIP is the whole
-source tree; the setup folder is ordinary source, not a binary installer.
+double-click `setup\Kira-Setup.cmd` inside the extracted folder. That ZIP is
+the whole source tree at its root; the setup folder is ordinary source, not a
+binary installer.
 
 To make a copied `setup/` folder bootstrap the project by itself, put the
 repository URL on one line in `repository.txt`:

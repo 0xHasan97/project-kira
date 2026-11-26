@@ -256,7 +256,7 @@ function Download-Source([string]$Url, [string]$Destination) {
                       Where-Object { Test-Path (Join-Path $_.FullName "run_kira.py") } |
                       Select-Object -First 1
             if ($null -eq $source) {
-                # GitHub adds one wrapper folder; source-code adds a second.
+                # GitHub adds one wrapper folder; accept one extra level for older archives.
                 $source = Get-ChildItem -LiteralPath $expanded -Directory |
                           ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -Directory } |
                           Where-Object { Test-Path (Join-Path $_.FullName "run_kira.py") } |
