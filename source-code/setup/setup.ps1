@@ -8,9 +8,10 @@
   checkout is used. When only setup/ was copied, the repository archive is
   downloaded first, into %USERPROFILE%\Kira unless -InstallDir says otherwise.
 
-  The script checks for Python 3.12+ and Node 20.19+/22.12+, creates the engine
-  virtual environment, installs the engine, installs the UI packages, builds the
-  UI, writes a desktop shortcut, and starts run-kira.bat.
+  The script checks for Python 3.12+ and Node 20.19+/22.12+, installs a missing
+  one with winget when available, creates the engine virtual environment, installs
+  the engine, installs the UI packages, builds the UI, writes a desktop shortcut,
+  and starts run-kira.bat.
 #>
 [CmdletBinding()]
 param(
@@ -22,6 +23,7 @@ param(
     [switch]$NoLaunch,
     [switch]$NoShortcut,
     [switch]$SkipBuild,
+    [switch]$NoPrereqInstall,
     [switch]$NoPrompt
 )
 
@@ -92,13 +94,31 @@ function Get-RepoUrl {
     Fail "No source checkout beside setup/ and no repository URL. Put the URL on one line in setup\repository.txt, or pass -RepoUrl https://github.com/OWNER/REPO"
 }
 
+function Get-PythonInstalls {
+    $roots = @()
+    foreach ($base in @($env:LOCALAPPDATA, $env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+        if ($base) { $roots += (Join-Path $base "Python") }
+    }
+    foreach ($root in $roots) {
+        if (-not $root -or -not (Test-Path -LiteralPath $root)) { continue }
+        Get-ChildItem -LiteralPath $root -Directory -Filter "Python3*" -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object {
+                $exe = Join-Path $_.FullName "python.exe"
+                if (Test-Path -LiteralPath $exe) { @{ Exe = $exe; Args = @() } }
+            }
+    }
+}
+
 function Find-Python {
     $candidates = @(
         @{ Exe = "py"; Args = @("-3.12") },
-        @{ Exe = "py"; Args = @("-3") },
-        @{ Exe = "python"; Args = @() }
+        @{ Exe = "py"; Args = @("-3") }
     )
+    $candidates += @(Get-PythonInstalls)
+    $candidates += @{ Exe = "python"; Args = @() }
     foreach ($candidate in $candidates) {
+        if ($null -eq $candidate) { continue }
         if (-not (Get-Command $candidate.Exe -ErrorAction SilentlyContinue)) { continue }
         $arguments = @($candidate.Args) + @("-c", "import sys; print('%d.%d' % sys.version_info[:2])")
         try {
@@ -115,9 +135,20 @@ function Find-Python {
 }
 
 function Get-NodeVersion {
-    if (-not (Get-Command node -ErrorAction SilentlyContinue)) { return $null }
+    $nodeExe = (Get-Command node -ErrorAction SilentlyContinue).Source
+    if (-not $nodeExe) {
+        $paths = @()
+        if ($env:ProgramFiles) { $paths += (Join-Path $env:ProgramFiles "nodejs\node.exe") }
+        if ($env:LOCALAPPDATA) { $paths += (Join-Path $env:LOCALAPPDATA "Programs\nodejs\node.exe") }
+        foreach ($path in $paths) {
+            if ($path -and (Test-Path -LiteralPath $path)) { $nodeExe = $path; break }
+        }
+    }
+    if (-not $nodeExe) { return $null }
+    $nodeDir = Split-Path -Parent $nodeExe
+    if (($env:Path -split ";") -notcontains $nodeDir) { $env:Path = "$nodeDir;$env:Path" }
     try {
-        $text = (& node --version 2>$null | Select-Object -First 1)
+        $text = (& $nodeExe --version 2>$null | Select-Object -First 1)
         if (-not $text) { return $null }
         $version = [version]($text.Trim().TrimStart("v"))
         $ok = (($version -ge [version]"20.19.0") -and ($version -lt [version]"21.0.0")) -or
@@ -129,14 +160,52 @@ function Get-NodeVersion {
     return $null
 }
 
+function Update-ProcessPath {
+    $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $user = [Environment]::GetEnvironmentVariable("Path", "User")
+    $parts = @($env:Path, $machine, $user) | Where-Object { $_ }
+    $env:Path = ($parts -join ";")
+}
+
+function Install-Prerequisite([string]$Id, [string]$Name) {
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if (-not $winget) {
+        Say ("winget is not available; cannot install {0} automatically." -f $Name)
+        return $false
+    }
+    Say ("Installing {0} with winget. Approve the Windows prompt if it appears..." -f $Name)
+    & winget install --id $Id -e --silent --accept-package-agreements --accept-source-agreements 2>&1 |
+        ForEach-Object { Write-Host ("  {0}" -f $_) }
+    $code = $LASTEXITCODE
+    Update-ProcessPath
+    if ($code -ne 0) {
+        Say ("winget could not install {0} (exit {1})." -f $Name, $code)
+        return $false
+    }
+    Start-Sleep -Seconds 1
+    return $true
+}
+
 function Ensure-Prerequisites {
     $python = Find-Python
-    if ($null -eq $python) {
-        Fail "Python 3.12+ is required. Install it from https://www.python.org/downloads/ (tick Add python.exe to PATH), then run this file again."
-    }
     $node = Get-NodeVersion
+
+    if (-not $CheckOnly -and -not $NoPrereqInstall) {
+        if ($null -eq $python) {
+            Install-Prerequisite "Python.Python.3.12" "Python 3.12" | Out-Null
+            $python = Find-Python
+        }
+        if ($null -eq $node) {
+            Install-Prerequisite "OpenJS.NodeJS.LTS" "Node.js LTS" | Out-Null
+            $node = Get-NodeVersion
+        }
+    }
+
+    if ($null -eq $python) {
+        Fail "Python 3.12+ is required. Install it from https://www.python.org/downloads/ (tick Add python.exe to PATH), or run 'winget install -e --id Python.Python.3.12', then run this file again."
+    }
     if ($null -eq $node) {
-        Fail "Node.js 20.19+ (or 22.12+) is required to build the UI. Install the LTS from https://nodejs.org/, then run this file again."
+        Fail "Node.js 20.19+ (or 22.12+) is required to build the UI. Install the LTS from https://nodejs.org/, or run 'winget install -e --id OpenJS.NodeJS.LTS', then run this file again."
     }
     return @{ Python = $python; Node = $node }
 }

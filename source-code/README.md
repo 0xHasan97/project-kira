@@ -23,10 +23,11 @@ docs/qa/         records of checks that only a real run can make
 ## One click
 
 For a fresh copy, double-click **`setup\Kira-Setup.cmd`**. It checks for
-Python 3.12+ and Node 20.19+/22.12+, creates `kira-engine/.venv`, installs the
-engine and UI packages, builds the UI, writes a desktop shortcut, and starts
-Kira. From GitHub, use **Code -> Download ZIP** first; the whole source tree is
-one archive. `setup/README.md` covers the flags and the standalone downloader.
+Python 3.12+ and Node 20.19+/22.12+, installs a missing one with `winget` when
+available, creates `kira-engine/.venv`, installs the engine and UI packages,
+builds the UI, writes a desktop shortcut, and starts Kira. From GitHub, use
+**Code -> Download ZIP** first; the whole source tree is one archive.
+`setup/README.md` covers the flags and the standalone downloader.
 
 After that first setup, **`run-kira.bat`** (or `python run_kira.py`) is the fast
 start. It writes `.kira-data/config.yaml` if missing, rebuilds the UI if the

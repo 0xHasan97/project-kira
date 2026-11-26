@@ -1,7 +1,8 @@
 # Setup
 
-Double-click **`Kira-Setup.cmd`**. One file checks the machine, installs both
-halves of Kira, builds the UI, writes a desktop shortcut, and starts the app.
+Double-click **`Kira-Setup.cmd`**. One file checks the machine, installs missing
+Python or Node with `winget` when available, installs both halves of Kira,
+builds the UI, writes a desktop shortcut, and starts the app.
 
 ## First run
 
@@ -9,8 +10,9 @@ halves of Kira, builds the UI, writes a desktop shortcut, and starts the app.
 - When only `setup/` is present, it downloads the repository first. The default
   target is `%USERPROFILE%\Kira`; pass `-InstallDir` to choose another folder.
 
-Prerequisites: **Python 3.12+** and **Node.js 20.19+ or 22.12+**. The script
-checks both and names the missing one. They can be installed with:
+Prerequisites: **Python 3.12+** and **Node.js 20.19+ or 22.12+**. If either is
+missing, setup installs it with `winget`; approve the Windows prompt if one
+appears. Pass `-NoPrereqInstall` to manage them yourself. Manual fallback:
 
 ```powershell
 winget install -e --id Python.Python.3.12
@@ -48,6 +50,7 @@ asks once.
 | `-RepoUrl URL` | Repository or direct ZIP URL for a standalone download. |
 | `-Branch NAME` | Branch to download; default tries `main`, then `master`. |
 | `-SkipBuild` | Install the engine only; skip UI packages and the build. |
+| `-NoPrereqInstall` | Do not install missing Python/Node with `winget`. |
 | `-NoLaunch` | Install and make the shortcut without starting Kira. |
 | `-NoShortcut` | Do not write `Kira.lnk` to the desktop. |
 | `-NoPrompt` | Never ask for a repository URL; fail instead. |
@@ -68,7 +71,7 @@ virtual environments, build output, and logs out of Git.
 
 ```powershell
 git remote add origin https://github.com/OWNER/REPO.git
-git push -u origin master
+git push -u origin main
 ```
 
 After the first push, edit `setup/repository.txt` with that URL and commit it,
@@ -78,8 +81,9 @@ release automatically.
 
 ## Troubleshooting
 
-- **Python or Node not found:** install the version above, open a new terminal,
-  and run again. The current window does not see a PATH change.
+- **Python or Node not found:** let setup install it with `winget`, or install
+  the version above and open a new terminal. The current window does not see a
+  PATH change.
 - **`npm run build` fails:** delete `kira-chat\node_modules` and run the setup
   again; it will use `npm ci` from the lockfile.
 - **Port 8901 is busy:** start later with `run-kira.bat --port 8905`.
