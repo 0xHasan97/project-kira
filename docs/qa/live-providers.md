@@ -81,8 +81,11 @@ which is why the report prints provider, status and message. If a future provide
 a turn, this is the paragraph to come back to.
 
 `gemini-2.5-flash` was retired by Google, not by Kira, and it was still named in both the shipped
-sample config and `.kira-data/config.yaml`. Both now list `gemini-3.5-flash`, the model measured
-answering above.
+sample config and `.kira-data/config.yaml`. Both now list `gemini-3.5-flash-lite`: re-measured on
+2026-11-26, `gemini-3.5-flash` returned `provider_5xx` 503 high-demand on three app turns in a row,
+while the lite model answered text, a signed tool call with replay, and a 1x1 red PNG in one pass.
+The retired model is not offered by the sample; the provider's live `/models` listing still reports
+what Google reports, including non-chat models.
 
 ## Still missing on this machine
 

@@ -342,7 +342,7 @@ providers:
     priority: 80
     vision: true
     models:
-      - gemini-3.5-flash
+      - gemini-3.5-flash-lite
 """
 
 
