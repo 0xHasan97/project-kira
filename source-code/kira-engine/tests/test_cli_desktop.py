@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from kira import __main__ as cli
 
 
@@ -42,6 +44,9 @@ def test_desktop_refuses_before_starting_when_the_chat_bundle_is_missing(tmp_pat
 
 
 def test_desktop_starts_from_the_configured_loopback_address_and_the_stored_token(tmp_path, monkeypatch):
+    pytest.importorskip("pystray")
+    pytest.importorskip("webview")
+    pytest.importorskip("PIL")
     dist = tmp_path / "dist"
     dist.mkdir()
     (dist / "index.html").write_text("<!doctype html>", encoding="utf-8")

@@ -213,6 +213,10 @@ pip install -e ".[desktop]"     # pywebview + pystray + pillow; nothing else nee
 .venv/Scripts/kira-engine.exe desktop
 ```
 
+`setup\Kira-Setup.cmd` installs these extras, so a one-click install can use
+`run-kira.bat --window` without another pip command. The manual command above is
+only for a bare checkout.
+
 `kira-engine desktop` runs the same loopback engine on the same port, but inside a
 native window (WebView2 via pywebview) instead of a tab. It refuses with exit code 2
 when `kira-chat/dist/index.html` is missing — a window on a 404 is a blank pane with
@@ -832,8 +836,8 @@ the mic path.
 ## Checks
 
 ```bash
-cd kira-engine && .venv/Scripts/python -m pytest -q   # 794 tests (+8 skipped), every provider faked; the live suite is skipped
-cd kira-chat  && npm run check                        # tsc --noEmit, then vitest (47 files, 481 tests, jsdom), then vite build
+cd kira-engine && .venv/Scripts/python -m pytest -q   # 881 tests (+9 skipped), every provider faked; the live suite is skipped
+cd kira-chat  && npm run check                        # tsc --noEmit, then vitest (55 files, 561 tests, jsdom), then vite build
 node kira-contracts/check-drift.mjs                   # cross-language contract gate: v2, 86 schemas, 6 chunk types, 16 chain events
 ```
 

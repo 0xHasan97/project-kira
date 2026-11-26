@@ -307,6 +307,12 @@ function Install-Kira($Tools, [string]$Root) {
     try {
         & $venvPython -m pip install --disable-pip-version-check -e ".[dev]"
         if ($LASTEXITCODE -ne 0) { Fail "pip install failed." }
+
+        Say "Installing native-window support..."
+        & $venvPython -m pip install --disable-pip-version-check -e ".[desktop]"
+        if ($LASTEXITCODE -ne 0) {
+            Say "Native-window extras were not installed; browser mode still works."
+        }
     } finally {
         Pop-Location
     }

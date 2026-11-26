@@ -9,6 +9,8 @@ builds the UI, writes a desktop shortcut, and starts the app.
 - When this folder sits next to `run_kira.py`, that checkout is used.
 - When only `setup/` is present, it downloads the repository first. The default
   target is `%USERPROFILE%\Kira`; pass `-InstallDir` to choose another folder.
+- The engine install includes the native-window extras, so `run-kira.bat --window`
+  works without another pip command.
 
 Prerequisites: **Python 3.12+** and **Node.js 20.19+ or 22.12+**. If either is
 missing, setup installs it with `winget`; approve the Windows prompt if one
