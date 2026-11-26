@@ -5,4 +5,4 @@
 #
 # Leave it blank to use the origin remote of the checkout beside setup/,
 # or pass -RepoUrl on the command line.
-https://github.com/MdHasan097/project-kira
+https://github.com/0xHasan97/project-kira
