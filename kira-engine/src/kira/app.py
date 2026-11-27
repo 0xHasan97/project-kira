@@ -364,7 +364,11 @@ def _local_browser(request: Request) -> bool:
         return False
     origin = request.headers.get("origin")
     if origin:
-        parsed = urlsplit(origin)
+        try:
+            parsed = urlsplit(origin)
+        except ValueError:
+            # A malformed Origin is a refusal, not a 500: only a browser on this page mints.
+            return False
         return parsed.scheme in {"http", "https"} and parsed.netloc == host
     return True
 
