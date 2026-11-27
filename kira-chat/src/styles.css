@@ -1346,17 +1346,29 @@ button.link {
   grid-template-columns: 56px minmax(0, 1fr) auto;
 }
 .app[data-shell="agent"][data-sidebar="collapsed"] .rail-brand {
+  width: 100%;
+  min-width: 0;
   flex-direction: column;
   justify-content: center;
   gap: 0.4rem;
   padding: 0;
 }
 .app[data-shell="agent"][data-sidebar="collapsed"] .rail-brand strong,
-.app[data-shell="agent"][data-sidebar="collapsed"] .rail-label {
+.app[data-shell="agent"][data-sidebar="collapsed"] .rail-label,
+.app[data-shell="agent"][data-sidebar="collapsed"] .nav-group-label {
   display: none;
+}
+.app[data-shell="agent"][data-sidebar="collapsed"] .rail {
+  padding-inline: 0.35rem;
+}
+.app[data-shell="agent"][data-sidebar="collapsed"] .nav-group {
+  width: 100%;
+  min-width: 0;
 }
 .app[data-shell="agent"][data-sidebar="collapsed"] .rail button {
   justify-content: center;
+  width: 100%;
+  min-width: 0;
   padding: 0;
 }
 .app[data-shell="agent"][data-sidebar="collapsed"] .shell-switch {
@@ -1372,7 +1384,7 @@ button.link {
   white-space: nowrap;
   width: 100%;
   padding: 0.2rem 0;
-  font-size: 9px;
+  font-size: 8px;
 }
 .app[data-shell="agent"][data-sidebar="collapsed"] .sidebar-toggle {
   margin-left: 0;
@@ -2418,6 +2430,9 @@ a:focus-visible {
     min-height: 0;
     padding: 1rem 1rem 1.5rem;
     overflow-y: auto;
+  }
+  .screen-head {
+    flex-wrap: wrap;
   }
   .avatar-body {
     grid-template-columns: 1fr;

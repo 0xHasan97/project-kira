@@ -117,7 +117,7 @@
 
 /* ── Rail ─────────────────────────────────────────────────────────────────────────────────────── */
 @media (min-width: 60.01rem) {
-  .app[data-shell="agent"] > .rail {
+  .app[data-shell="agent"][data-mode] > .rail {
     height: calc(100dvh - 1.5rem);
     margin: 0.75rem 0 0.75rem 0.75rem;
     padding: 1rem 0.7rem;
@@ -127,6 +127,9 @@
     box-shadow: var(--rail-shadow);
     -webkit-backdrop-filter: var(--rail-blur);
     backdrop-filter: var(--rail-blur);
+  }
+  .app[data-shell="agent"][data-sidebar="collapsed"][data-mode] > .rail {
+    padding-inline: 0.35rem;
   }
 }
 
@@ -201,7 +204,7 @@
 }
 
 /* ── Inspector ────────────────────────────────────────────────────────────────────────────────── */
-.app[data-shell="agent"] > .work-panel {
+.app[data-shell="agent"][data-mode] > .work-panel {
   align-self: start;
   height: calc(100dvh - 1.5rem);
   margin: 0.75rem 0.75rem 0.75rem 0;
@@ -540,7 +543,7 @@
 }
 
 @media (max-width: 60rem) {
-  .app[data-shell="agent"] > .rail {
+  .app[data-shell="agent"][data-mode] > .rail {
     margin: 0.55rem 0.55rem 0;
     border: 1px solid var(--rail-rim);
     border-radius: 22px;
@@ -584,7 +587,7 @@
     padding: 0.9rem;
   }
 
-  .app[data-shell="agent"] > .rail[data-open="on"] {
+  .app[data-shell="agent"][data-mode] > .rail[data-open="on"] {
     margin: 0;
     border: 1px solid var(--rail-rim);
     border-bottom: 0;
@@ -693,7 +696,7 @@
 }
 
 @media (forced-colors: active) {
-  .app[data-shell] :is(
+  .app[data-shell][data-mode] :is(
       .rail,
       .bar,
       .work-panel,
