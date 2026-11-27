@@ -8,6 +8,7 @@ import "@fontsource/jetbrains-mono/400.css";
 import App, { BASE_KEY, TOKEN_KEY } from "./App.tsx";
 import { takeLaunchToken } from "./hash-route.ts";
 import "./styles.css";
+import "./app-glass.css";
 import "./chat-glass.css";
 import { registerShellWorker } from "./sw.ts";
 
