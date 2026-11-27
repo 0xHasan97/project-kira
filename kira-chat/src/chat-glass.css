@@ -340,9 +340,9 @@
     ),
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--accent) 78%, white),
-      var(--accent) 54%,
-      color-mix(in srgb, var(--accent) 76%, var(--ink))
+      color-mix(in srgb, var(--accent) 58%, white),
+      color-mix(in srgb, var(--accent) 70%, white) 55%,
+      color-mix(in srgb, var(--accent) 78%, white)
     );
   color: var(--on-accent);
   box-shadow:
