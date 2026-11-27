@@ -8,6 +8,7 @@ import "@fontsource/jetbrains-mono/400.css";
 import App, { BASE_KEY, TOKEN_KEY } from "./App.tsx";
 import { takeLaunchToken } from "./hash-route.ts";
 import "./styles.css";
+import "./chat-glass.css";
 import { registerShellWorker } from "./sw.ts";
 
 // The launcher opens a URL whose fragment carries the bearer token. Consume it before React
