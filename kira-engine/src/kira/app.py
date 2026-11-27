@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -14,9 +15,10 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
-from fastapi import Depends, FastAPI, Header, Request, WebSocket
+from fastapi import Cookie, Depends, FastAPI, Header, Request, WebSocket
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
@@ -324,6 +326,47 @@ def needs_key(provider: EffectiveProvider) -> bool:
     pair, a keyless provider is reported as missing its key and unit 5's offline model ships looking dead.
     """
     return bool(provider.key_ref)
+
+
+SESSION_COOKIE = "kira_session"
+
+
+def _loopback_name(value: str) -> bool:
+    """A host name or address that only this machine can reach.
+
+    The browser session is minted for a page loaded from loopback: typing the launcher's token was the
+    only way in, and a bookmark or a reloaded tab landed on the gate because the fragment was gone. The
+    cookie is the same owner credential, so it is never handed to a remote page — pairing still owns
+    that path.
+    """
+    try:
+        host = urlsplit("//" + value).hostname or ""
+    except ValueError:
+        return False
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _local_browser(request: Request) -> bool:
+    """Whether this request came from a page on the same loopback origin.
+
+    Both ends matter: a tunnel can connect from 127.0.0.1 and forward a public Host, and a local
+    process can forge Host. Requiring the peer and the Host to be loopback keeps the cookie on the
+    machine. A present Origin must name that same origin, which is what a browser sends on the POST.
+    """
+    host = request.headers.get("host", "")
+    client = request.client.host if request.client else ""
+    if not (_loopback_name(host) and _loopback_name(client)):
+        return False
+    origin = request.headers.get("origin")
+    if origin:
+        parsed = urlsplit(origin)
+        return parsed.scheme in {"http", "https"} and parsed.netloc == host
+    return True
 
 
 def chat_dist_dir(config: Config) -> Path:
@@ -663,11 +706,23 @@ def create_app(config: Config | None = None, *, engine: Engine | None = None, **
             return authorization[7:].strip()
         return ""
 
-    def require_token(authorization: str | None = Header(None)) -> None:
-        # Two principals, one door: the owner's engine token, or a device a pairing code minted.
+    def presented(authorization: str | None, kira_session: str | None) -> str:
+        """The bearer header, or the session cookie the bundle minted for a loopback page.
+
+        A header wins: a stale token must fail and send the UI back through the gate rather than be
+        silently replaced by a cookie for another engine on the same browser.
+        """
+        return bearer(authorization) or (kira_session or "").strip()
+
+    def require_token(
+        authorization: str | None = Header(None),
+        kira_session: str | None = Cookie(None),
+    ) -> None:
+        # Two principals, one door: the owner's engine token, or a device a pairing code minted. The
+        # owner token may arrive as the loopback browser's cookie; a device token never does.
         # The device is read-only in practice: mutations ask for the confirm secret below, and
         # provider keys ask for the engine token itself - neither ever leaves the desktop.
-        provided = bearer(authorization)
+        provided = presented(authorization, kira_session)
         if provided.startswith(DEVICE_TOKEN_PREFIX) and engine.device_for(provided) is not None:
             return
         if not provided or not secrets.compare_digest(provided, engine.token):
@@ -675,9 +730,12 @@ def create_app(config: Config | None = None, *, engine: Engine | None = None, **
 
     auth = Depends(require_token)
 
-    def require_owner(authorization: str | None = Header(None)) -> None:
+    def require_owner(
+        authorization: str | None = Header(None),
+        kira_session: str | None = Cookie(None),
+    ) -> None:
         """Pairing and device management belong to the machine, not to a device that machine paired."""
-        provided = bearer(authorization)
+        provided = presented(authorization, kira_session)
         if not provided or not secrets.compare_digest(provided, engine.token):
             raise AuthError("this endpoint needs the engine token from the desktop, not a device token")
 
@@ -747,6 +805,36 @@ def create_app(config: Config | None = None, *, engine: Engine | None = None, **
     @app.get(f"{API_PREFIX}/openapi.json")
     async def openapi() -> dict:
         return OPENAPI
+
+    @app.post(f"{API_PREFIX}/kira/session")
+    async def open_browser_session(request: Request, response: Response) -> dict:
+        """Mint the loopback page's owner session, so a reload does not land on the connect gate.
+
+        The launcher's fragment is the first way in and still works; this is the path for a bookmark, a
+        restored tab, or a page whose fragment was already consumed. Only a page served to this machine
+        qualifies, and the cookie is HttpOnly and SameSite=Strict — a remote visitor still pairs.
+        """
+        if not _local_browser(request):
+            raise AuthError(
+                "a browser session is only available to a page on this machine; use the launcher or pair a device"
+            )
+        response.set_cookie(
+            SESSION_COOKIE,
+            engine.token,
+            max_age=30 * 24 * 60 * 60,
+            httponly=True,
+            samesite="strict",
+            path=API_PREFIX,
+            secure=request.url.scheme == "https",
+        )
+        return {"connected": True}
+
+    @app.delete(f"{API_PREFIX}/kira/session")
+    async def close_browser_session(request: Request, response: Response) -> dict:
+        if not _local_browser(request):
+            raise AuthError("only a page on this machine can close its browser session")
+        response.delete_cookie(SESSION_COOKIE, path=API_PREFIX)
+        return {"connected": False}
 
     @app.get(f"{API_PREFIX}/models", dependencies=[auth])
     async def models(live: bool = False) -> dict:

@@ -78,16 +78,41 @@ export class KiraClient {
   }
 
   private headers(extra: Record<string, string> = {}): HeadersInit {
-    return { Authorization: `Bearer ${this.token}`, ...extra };
+    const headers: Record<string, string> = { ...extra };
+    if (this.token) headers.Authorization = `Bearer ${this.token}`;
+    return headers;
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await this.fetchImpl(this.url(path), {
       ...init,
+      credentials: "include",
       headers: this.headers((init.headers as Record<string, string>) ?? {}),
     });
     if (!response.ok) throw await this.asError(response, 0);
     return (await response.json()) as T;
+  }
+
+  /**
+   * The loopback bundle's own session. A reload has no launcher fragment, and this is what keeps it
+   * from asking for the token again; the engine sets an HttpOnly cookie and never hands the value
+   * back to JavaScript. A remote tab is refused here and still pairs or types a token.
+   */
+  async openSession(): Promise<void> {
+    const response = await this.fetchImpl(this.url(`${API_PREFIX}/kira/session`), {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) throw await this.asError(response, 0);
+  }
+
+  /** Disconnect has to kill the cookie too, or the next read silently signs the same browser back in. */
+  async closeSession(): Promise<void> {
+    const response = await this.fetchImpl(this.url(`${API_PREFIX}/kira/session`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!response.ok && response.status !== 401) throw await this.asError(response, 0);
   }
 
   private url(path: string): string {

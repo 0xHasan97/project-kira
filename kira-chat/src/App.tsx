@@ -68,6 +68,7 @@ import {
 
 export const TOKEN_KEY = "kira.token";
 export const BASE_KEY = "kira.base";
+export const AUTO_KEY = "kira.autoconnect";
 const SIDEBAR_KEY = "kira.sidebar";
 
 /** One button is enough: system, light, dark, back to system. The settings sheet is the explicit list. */
@@ -194,6 +195,14 @@ export default function App() {
     () => localStorage.getItem(TOKEN_KEY) ?? "",
   );
   const [draftToken, setDraftToken] = useState("");
+  // A reloaded tab has no launcher fragment. Keeping the loopback session on is what removes the
+  // connect gate from the normal path; an explicit disconnect turns it off until a token is typed.
+  const [autoConnect, setAutoConnect] = useState(
+    () => localStorage.getItem(AUTO_KEY) !== "off",
+  );
+  const [checkingSession, setCheckingSession] = useState(
+    () => !localStorage.getItem(TOKEN_KEY) && localStorage.getItem(AUTO_KEY) !== "off",
+  );
   const [connected, setConnected] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [engineIssue, setEngineIssue] = useState<string | null>(null);
@@ -348,8 +357,49 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (token) void refresh();
-  }, [token, refresh]);
+    if (token) {
+      void refresh();
+      return;
+    }
+    if (route === "companion" || route === "pair") {
+      // Those two screens own their credential story: the card is injected by the desktop window,
+      // and the phone arrives with a pairing code. Minting an owner cookie behind them would be a
+      // second, invisible way in.
+      setCheckingSession(false);
+      return;
+    }
+    if (!autoConnect || connected) {
+      setCheckingSession(false);
+      return;
+    }
+    // Ask the engine for its own loopback cookie before drawing anything: this is the bookmarked
+    // tab, the restored tab, and the reload that used to land on “Connect to Kira”. The cookie is
+    // HttpOnly; the UI never sees the token, and a remote origin is refused by the engine.
+    let cancelled = false;
+    setCheckingSession(true);
+    void (async () => {
+      try {
+        await client.openSession();
+        if (!cancelled) await refresh();
+      } catch (error) {
+        if (!cancelled) {
+          // Keep the refusal that sent us here: a stale token's sentence is more useful than the
+          // session endpoint's 401 on the retry that follows it. A connection that never opened is
+          // the offline case, and it says so in the same words as the shell's banner.
+          const issue =
+            error instanceof KiraApiError
+              ? messageOf(error)
+              : `no answer from the engine at ${base} (${messageOf(error)})`;
+          setConnectError((previous) => previous ?? issue);
+        }
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, autoConnect, connected, route, client, refresh, base]);
 
   // Ctrl/Cmd+K is the one shortcut that has to work from a composer too, so it is captured at the
   // window: a palette reachable only from an empty page would be a feature nobody finds.
@@ -371,8 +421,25 @@ export default function App() {
     if (!value) return;
     localStorage.setItem(TOKEN_KEY, value);
     localStorage.setItem(BASE_KEY, base.trim());
+    localStorage.removeItem(AUTO_KEY);
+    setAutoConnect(true);
+    setConnectError(null);
     setToken(value);
     setDraftToken("");
+  }
+
+  function disconnect() {
+    // An explicit disconnect has to survive the next read: without the flag the page would mint a
+    // new loopback cookie on its next render and sign itself straight back in.
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.setItem(AUTO_KEY, "off");
+    setAutoConnect(false);
+    setCheckingSession(false);
+    setToken("");
+    setConnected(false);
+    void client.closeSession().catch(() => {
+      // A refused close is already disconnected; the cookie simply expires on its own.
+    });
   }
 
   if (route === "companion") {
@@ -402,6 +469,8 @@ export default function App() {
         onPaired={(value) => {
           localStorage.setItem(TOKEN_KEY, value);
           localStorage.setItem(BASE_KEY, base.trim());
+          localStorage.removeItem(AUTO_KEY);
+          setAutoConnect(true);
           setToken(value);
           navigate("chat");
         }}
@@ -409,7 +478,14 @@ export default function App() {
     );
   }
 
-  if (!token) {
+  if (!token && !connected) {
+    if (checkingSession) {
+      return (
+        <main className="gate">
+          <p className="muted">connecting…</p>
+        </main>
+      );
+    }
     return (
       <main className="gate">
         <form onSubmit={connect} className="gate-card">
@@ -677,11 +753,7 @@ export default function App() {
           <button
             type="button"
             aria-label="disconnect"
-            onClick={() => {
-              localStorage.removeItem(TOKEN_KEY);
-              setToken("");
-              setConnected(false);
-            }}
+            onClick={disconnect}
           >
             <LogOut size={15} aria-hidden="true" />
             <span className="rail-label">disconnect</span>
@@ -904,9 +976,7 @@ export default function App() {
           sessionCount={chat.sessions.length}
           onRefresh={voidRefresh}
           onDisconnect={() => {
-            localStorage.removeItem(TOKEN_KEY);
-            setToken("");
-            setConnected(false);
+            disconnect();
             setPanelOpen(false);
           }}
         />

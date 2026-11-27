@@ -23,6 +23,8 @@ interface FakeOptions {
   sessions?: unknown[];
   messages?: Record<string, unknown[]>;
   healthz?: unknown;
+  /** A loopback page's cookie mint. False answers the refusal a remote page would see. */
+  session?: boolean;
   overview?: unknown;
   providers?: unknown;
   settings?: unknown;
@@ -189,6 +191,21 @@ export function fakeEngine(options: FakeOptions = {}) {
           providers_configured: 2,
           default_mode: "AUTO",
         },
+      );
+    }
+    if (at("/kira/session")) {
+      if (method === "DELETE") return json({ connected: false });
+      if (method === "POST" && options.session) return json({ connected: true });
+      return json(
+        {
+          error: {
+            code: "unauthorized",
+            message: "a browser session is only available to a page on this machine; use the launcher or pair a device",
+            status: 401,
+            retryable: false,
+          },
+        },
+        401,
       );
     }
     if (at("/models"))

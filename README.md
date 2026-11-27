@@ -418,6 +418,8 @@ downloads nothing — a missing engine or checkpoint is a sentence on the screen
 | `GET /v1/openapi.json` | none | machine-readable contract (`GET /openapi.json` is the same document, not a second opinion) |
 | `GET /v1/models` | bearer | catalogue built from *your* config, merged settings included; each row carries `key_present` and `needs_key`, so the picker can stamp the rows that cannot answer and never call a keyless provider broken; `?live=true` adds a free `list_models` probe per provider |
 | `POST /v1/chat/completions` | bearer | `stream: true` → SSE `delta` / `chain` / `tool_call` / `done` / `error`; `false` → OpenAI-shaped JSON |
+| `POST /v1/kira/session` | none (loopback page only) | mint the browser's HttpOnly owner cookie, so a reloaded or bookmarked tab opens the shell instead of the connect gate; a remote page is `401` and still pairs |
+| `DELETE /v1/kira/session` | none (loopback page only) | clear that cookie — the Disconnect button does this before it drops the token |
 | `GET /v1/kira/health` | bearer | per-provider ledger, with the effective tier and priority the router is using |
 | `GET /v1/kira/voice` | bearer | the real-time-call stack: listen / speak / see, each with its mode, whether it can run here, and why not |
 | `GET /v1/kira/overview` | bearer | one UTC month: turns, tokens, success rate, per-provider and per-model usage, daily series, budget rows, recent trouble, and `refusals` — the turns the plan rejected before a session existed, with `count`, `by_code` and the latest reasons |

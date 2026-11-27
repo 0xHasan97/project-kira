@@ -156,11 +156,12 @@ describe("App", () => {
     const engine = fakeEngine({ models: MODELS, health: HEALTH });
     vi.stubGlobal("fetch", engine.fetch);
     render(<App />);
-    // A fresh browser tab has no way to authenticate until the launcher's token is typed here.
-    expect(
-      screen.getByRole("heading", { name: "Connect to Kira" }),
-    ).toBeTruthy();
-    expect(engine.calls).toEqual([]);
+    // The loopback session is refused here (the fake's default), so the fallback gate is what a
+    // remote browser or a typed token still sees.
+    await screen.findByRole("heading", { name: "Connect to Kira" });
+    expect(engine.calls.map((call) => call.url)).toEqual([
+      `${API_PREFIX}/kira/session`,
+    ]);
 
     fireEvent.change(screen.getByLabelText("Bearer token"), {
       target: { value: "sekret" },
@@ -172,6 +173,24 @@ describe("App", () => {
     expect(
       engine.calls.some((call) => call.url === `${API_PREFIX}/models`),
     ).toBe(true);
+  });
+
+  it("opens the loopback session without asking for a token", async () => {
+    // A bookmark or a reloaded tab has no launcher fragment. The page asks the engine for its own
+    // HttpOnly cookie, and the first paint is the workspace: no gate, no token in localStorage.
+    const engine = fakeEngine({ models: MODELS, health: HEALTH, session: true });
+    vi.stubGlobal("fetch", engine.fetch);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText("model")).toBeTruthy());
+    expect(
+      screen.queryByRole("heading", { name: "Connect to Kira" }),
+    ).toBeNull();
+    expect(localStorage.getItem("kira.token")).toBeNull();
+    expect(engine.calls[0]).toMatchObject({
+      url: `${API_PREFIX}/kira/session`,
+      method: "POST",
+    });
   });
 
   it("names a revision disagreement after connect, where the gate can no longer show it", async () => {

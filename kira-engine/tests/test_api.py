@@ -39,6 +39,37 @@ async def test_endpoints_reject_missing_and_wrong_tokens(harness):
     assert wrong.status_code == 401
 
 
+async def test_a_loopback_page_can_mint_a_browser_session(harness):
+    """A reloaded tab has no fragment, but it is still the same machine's browser.
+
+    The cookie is the owner token, so the catalog behind `auth` must accept it without an
+    Authorization header. It is set for `/v1`, HttpOnly, and SameSite=Strict.
+    """
+    local = {"host": "127.0.0.1:8901", "origin": "http://127.0.0.1:8901"}
+    opened = await harness.api.post("/v1/kira/session", headers=local)
+    assert opened.status_code == 200
+    cookie = opened.cookies.get("kira_session")
+    assert cookie == "test-engine-token"
+    header = opened.headers["set-cookie"]
+    assert "HttpOnly" in header
+    assert "SameSite=strict" in header
+    assert "Path=/v1" in header
+
+    headers = {"host": local["host"], "cookie": f"kira_session={cookie}"}
+    assert (await harness.api.get("/v1/models", headers=headers)).status_code == 200
+    # `owner`, not just `auth`: the browser is the desktop principal for a key write too.
+    saved = await harness.api.put(
+        "/v1/kira/providers/fast_one/key", headers=headers, json={"key": "sk-from-cookie"}
+    )
+    assert saved.status_code == 200
+
+
+async def test_a_remote_page_cannot_mint_the_owner_session(harness):
+    refused = await harness.api.post("/v1/kira/session")
+    assert refused.status_code == 401
+    assert "only available to a page on this machine" in refused.json()["error"]["message"]
+
+
 async def test_models_lists_configured_models_with_owners(harness):
     resp = await harness.api.get("/v1/models", headers=harness.auth)
     data = resp.json()["data"]

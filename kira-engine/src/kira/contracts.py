@@ -1877,6 +1877,52 @@ OPENAPI: dict = {
                 },
             }
         },
+        f"{API_PREFIX}/kira/session": {
+            "post": {
+                "summary": "Mint the loopback browser's owner cookie",
+                "security": [],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "the HttpOnly, SameSite=Strict cookie was set",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {"connected": {"type": "boolean"}},
+                                    "required": ["connected"],
+                                }
+                            }
+                        },
+                    },
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
+                "description": (
+                    "No bearer token. Only a page served on loopback can call it; a remote page is "
+                    "refused so pairing remains the only way in from off the machine."
+                ),
+            },
+            "delete": {
+                "summary": "Clear the loopback browser's owner cookie",
+                "security": [],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "the cookie was expired",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {"connected": {"type": "boolean"}},
+                                    "required": ["connected"],
+                                }
+                            }
+                        },
+                    },
+                    "401": {"$ref": "#/components/responses/Unauthorized"},
+                },
+            },
+        },
         f"{API_PREFIX}/kira/health": {
             "get": {
                 "security": [{"bearerAuth": []}],
