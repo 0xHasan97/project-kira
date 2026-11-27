@@ -68,18 +68,65 @@
     radial-gradient(70rem 34rem at 0 -10%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%);
 }
 
+/* The rail gets its own stronger glass stack: a real specular sweep, the accent glowing through
+   from the page behind it, and a bright top edge. */
+.app[data-shell="agent"] {
+  --rail-fill: color-mix(in srgb, var(--panel) 55%, transparent);
+  --rail-rim: color-mix(in srgb, var(--accent) 20%, rgb(255 255 255 / 0.55));
+  --rail-sheen: rgb(255 255 255 / 0.52);
+  --rail-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+  --rail-shine:
+    linear-gradient(
+      152deg,
+      var(--rail-sheen) 0%,
+      color-mix(in srgb, var(--rail-sheen) 34%, transparent) 12%,
+      transparent 30%
+    ),
+    radial-gradient(46rem 30rem at 4% -8%, var(--rail-glow), transparent 66%),
+    radial-gradient(32rem 24rem at 100% 108%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 68%);
+  --rail-shadow:
+    0 38px 84px -38px rgb(15 23 42 / 0.4),
+    0 3px 10px -4px rgb(15 23 42 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.94),
+    inset 0 -1px 0 rgb(15 23 42 / 0.08),
+    inset 0 0 54px rgb(255 255 255 / 0.2);
+  --rail-blur: blur(32px) saturate(190%);
+}
+
+.app[data-shell="agent"][data-mode="dark"] {
+  --rail-fill: color-mix(in srgb, var(--panel) 66%, transparent);
+  --rail-rim: color-mix(in srgb, var(--accent) 26%, rgb(255 255 255 / 0.16));
+  --rail-sheen: rgb(255 255 255 / 0.24);
+  --rail-glow: color-mix(in srgb, var(--accent) 26%, transparent);
+  --rail-shine:
+    linear-gradient(
+      152deg,
+      var(--rail-sheen) 0%,
+      color-mix(in srgb, var(--rail-sheen) 30%, transparent) 12%,
+      transparent 32%
+    ),
+    radial-gradient(46rem 30rem at 4% -8%, var(--rail-glow), transparent 66%),
+    radial-gradient(32rem 24rem at 100% 108%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 68%);
+  --rail-shadow:
+    0 40px 92px -40px rgb(0 0 0 / 0.92),
+    0 2px 12px -4px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    inset 0 -1px 0 rgb(0 0 0 / 0.35),
+    inset 0 0 54px color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
 /* ── Rail ─────────────────────────────────────────────────────────────────────────────────────── */
 @media (min-width: 60.01rem) {
   .app[data-shell="agent"] > .rail {
     height: calc(100dvh - 1.5rem);
     margin: 0.75rem 0 0.75rem 0.75rem;
     padding: 1rem 0.7rem;
-    border: 1px solid var(--surface-rim);
+    border: 1px solid var(--rail-rim);
     border-radius: var(--surface-radius);
-    background: var(--surface-shine), var(--surface-fill-strong);
-    box-shadow: var(--surface-shadow), 0 16px 40px -34px color-mix(in srgb, var(--accent) 58%, transparent);
-    -webkit-backdrop-filter: blur(26px) saturate(150%);
-    backdrop-filter: blur(26px) saturate(150%);
+    background: var(--rail-shine), var(--rail-fill);
+    box-shadow: var(--rail-shadow);
+    -webkit-backdrop-filter: var(--rail-blur);
+    backdrop-filter: var(--rail-blur);
   }
 }
 
@@ -160,10 +207,13 @@
   margin: 0.75rem 0.75rem 0.75rem 0;
   border: 1px solid var(--surface-rim);
   border-radius: var(--surface-radius);
-  background: var(--surface-shine), var(--surface-fill-strong);
+  background:
+    linear-gradient(150deg, rgb(255 255 255 / 0.16), transparent 30%),
+    radial-gradient(42rem 30rem at 100% -10%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 68%),
+    var(--surface-fill-strong);
   box-shadow: var(--surface-shadow);
-  -webkit-backdrop-filter: blur(26px) saturate(145%);
-  backdrop-filter: blur(26px) saturate(145%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
   overflow: hidden;
 }
 
@@ -492,12 +542,12 @@
 @media (max-width: 60rem) {
   .app[data-shell="agent"] > .rail {
     margin: 0.55rem 0.55rem 0;
-    border: 1px solid var(--surface-rim);
+    border: 1px solid var(--rail-rim);
     border-radius: 22px;
-    background: var(--surface-shine), var(--surface-fill-strong);
-    box-shadow: var(--surface-shadow);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
-    backdrop-filter: blur(24px) saturate(150%);
+    background: var(--rail-shine), var(--rail-fill);
+    box-shadow: var(--rail-shadow);
+    -webkit-backdrop-filter: var(--rail-blur);
+    backdrop-filter: var(--rail-blur);
   }
 
   .app[data-shell="agent"] .bar {
@@ -536,13 +586,13 @@
 
   .app[data-shell="agent"] > .rail[data-open="on"] {
     margin: 0;
-    border: 1px solid var(--surface-rim);
+    border: 1px solid var(--rail-rim);
     border-bottom: 0;
     border-radius: 24px 24px 0 0;
-    background: var(--surface-shine), var(--surface-fill-strong);
-    box-shadow: 0 -24px 60px -30px rgb(0 0 0 / 0.6);
-    -webkit-backdrop-filter: blur(26px) saturate(150%);
-    backdrop-filter: blur(26px) saturate(150%);
+    background: var(--rail-shine), var(--rail-fill);
+    box-shadow: 0 -24px 60px -30px rgb(0 0 0 / 0.6), var(--rail-shadow);
+    -webkit-backdrop-filter: var(--rail-blur);
+    backdrop-filter: var(--rail-blur);
   }
 
   .app[data-shell] .phone-bar {
