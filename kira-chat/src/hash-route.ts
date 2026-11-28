@@ -2,6 +2,7 @@ export const ROUTES = [
   "chat",
   "call",
   "images",
+  "puter",
   "studio",
   "prompts",
   "overview",

@@ -12,7 +12,7 @@ of it in a native window with a tray, and `packaging\build.ps1` turns it into on
 ```
 kira-engine/     Python 3.12 FastAPI engine (the only thing that talks to providers)
   tools/         a scripted mock provider and the browser-pass lab — nothing real at stake
-kira-chat/       TypeScript + React: the chat and the ten routes beside it, served at /chat/
+kira-chat/       TypeScript + React: the chat and the fourteen routes beside it, served at /chat/
 kira-contracts/  hand-written TS types + check-drift.mjs, the cross-language gate
 setup/           one-click installer, standalone source downloader, GitHub notes
 docs/specs/      the design each sub-project implements
@@ -388,6 +388,49 @@ requirement.
   Kira UI never calls the studio's chat route, because `/v1/kira/chat/completions` owns conversation,
   memory and tools.
 
+## Puter: a user-pays AI workspace
+
+`#/puter` is a browser-side AI workspace built on [Puter.js](https://developer.puter.com/). It is
+deliberately separate from Kira's router: Puter uses its **user-pays model**, so the signed-in Puter
+account pays for the calls it makes and Kira never needs, sees or stores a Puter API key. The SDK is
+fetched from `https://js.puter.com/v2/` only after an explicit **Connect Puter** click; the screen and
+its CSS are a lazy route chunk, and no prompt or generated media passes through the engine.
+
+- **Connect on demand.** *Connect Puter* loads the SDK; when there is no Puter session yet the button
+  becomes *Continue to Puter* and that second click opens Puter's own sign-in popup. The account name
+  and a `sign out` action stay in the header, and connecting again reuses the browser's Puter session.
+  There is no Kira key field, no Vault entry and nothing added to `config.yaml`.
+- **Chat.** Messages stream through `puter.ai.chat` with a stop button, a model box backed by Puter's
+  live catalogue, and a test-mode switch. Leaving the model blank lets Puter choose.
+- **Images and video.** `txt2img` supports an optional model, an aspect ratio and test mode;
+  `txt2vid` supports length, size and test mode, with a warning that a provider may take up to 14
+  minutes. Results can be opened or downloaded; Puter's hosted URLs may expire.
+- **Speech.** Text to speech covers AWS Polly, OpenAI, ElevenLabs, Gemini, xAI and Speechify, with
+  provider-specific voice and model lists, output formats, AWS SSML, and OpenAI/Gemini delivery
+  instructions. `speech2txt` transcribes an audio file with an optional response format, and
+  `speech2speech` revoices one with ElevenLabs' voice-conversion models and optional noise removal.
+- **Vision.** `img2txt` reads text from an uploaded image or document, or from a URL. AWS Textract is
+  single-page; Mistral models also handle PDF, DOCX, PPTX, XLSX and EPUB.
+- **Realtime.** A live text or voice session uses OpenAI realtime through Puter. Text deltas and
+  voice transcripts are shown in the transcript; voice mode starts the microphone and speaker after
+  the session connects, and `interrupt` stops the current spoken turn. This API is beta and requires
+  a **paid Puter plan**, so the screen surfaces that error rather than pretending it is free.
+- **Catalogue.** `listModels` and `listModelProviders` fill the model table with provider, context,
+  maximum output and Puter's per-token price; the same list feeds the chat model suggestions.
+- **Attribution.** The screen footer links to `developer.puter.com` with "Powered by Puter", as
+  Puter's developer terms ask. Puter.js must be served over HTTP; Kira's loopback page is.
+
+**Third-party script boundary.** Puter.js is official Puter code, not Kira code, and once loaded it
+runs with the same-origin access of any script on the page. The loopback session uses an HttpOnly
+cookie, so JavaScript cannot read that token; a paired remote tab that keeps a typed token in
+`localStorage` does not get the same protection from any third-party script. Use this workspace on
+the local page and in a browser profile you trust. Kira does not pass the SDK an engine token.
+
+Puter's OpenAI-compatible endpoint (`https://api.puter.com/puterai/openai/v1/`) is **not** wired into
+Kira's provider registry on purpose: it requires a paid Puter plan, while `puter.ai.*` works for free
+accounts through user-pays billing. Adding it as an ordinary provider would also put a long-lived key
+back into the Vault, which is the opposite of this screen's design.
+
 ## Images on this machine
 
 `#/images` is a local Stable Diffusion workspace modelled on Portable AI Studio's text-to-image screen.
@@ -684,6 +727,7 @@ fixes it:
 | --- | --- |
 | `#/chat` | chat: composer, mode and model selects, the streaming turn, chain chips, usage line, recent sessions. The model select opens on `Auto · the router picks`, which sends no model at all; naming a row makes it the preference in `AUTO` and a pin in the other lanes, and the rows without a key say so |
 | `#/call` | the live voice and video call: self-view, level meter, mute/camera/look, the spoken transcript, and what the local stack can actually do |
+| `#/puter` | the user-pays Puter AI workspace: account connection, streamed chat, images, video, speech, OCR, realtime text/voice and the live model catalogue |
 | `#/overview` | one month: turns, tokens, success rate, spend against cap per provider, a daily series, top models, recent trouble, and the refusals no turn row could record — shown even in a month that spent nothing |
 | `#/providers` | `enabled`, `tier`, `priority`, `monthly_cap`, key, ledger and cooldown, and Test |
 | `#/models` | every configured model with its provider, tier and month usage; "use in chat" hops to the composer |
@@ -704,8 +748,8 @@ stored history; both include the provider and model that answered, because that 
 screenshot loses.
 
 **The heavy screens arrive only when asked for.** Chat, the provider tables and session history are
-in the first bundle; the 3D stage, the call and Studio are route chunks. That is 359 KB of
-JavaScript raw (108 KB gzip) to open chat instead of 962 KB, with the 566 KB stage fetched only for a route that
+in the first bundle; the 3D stage, the call, Studio and Puter are route chunks. That is 361 KB of
+JavaScript raw (109 KB gzip) to open chat instead of 962 KB, with the 566 KB stage fetched only for a route that
 draws it — and a pointer resting on its rail button starts the fetch before the click. Files under
 `/chat/assets` are content-hashed and served `immutable` for a year; `index.html`, `sw.js` and the
 manifest revalidate, so a rebuild cannot pin an old shell. The worker caches a route chunk after its
@@ -847,7 +891,7 @@ the mic path.
 
 ```bash
 cd kira-engine && .venv/Scripts/python -m pytest -q   # 887 tests (+9 skipped), every provider faked; the live suite is skipped
-cd kira-chat  && npm run check                        # tsc --noEmit, then vitest (55 files, 561 tests, jsdom), then vite build
+cd kira-chat  && npm run check                        # tsc --noEmit, then vitest (57 files, 577 tests, jsdom), then vite build
 node kira-contracts/check-drift.mjs                   # cross-language contract gate: v2, 86 schemas, 6 chunk types, 16 chain events
 ```
 

@@ -43,6 +43,7 @@ import {
   BookOpen,
   Boxes,
   BrainCircuit,
+  Cloud,
   Command as CommandIcon,
   Cpu,
   Download,
@@ -83,6 +84,7 @@ const NAV_ICONS = {
   chat: MessageSquare,
   call: Phone,
   images: ImageIcon,
+  puter: Cloud,
   studio: Boxes,
   prompts: Sparkles,
   overview: Activity,
@@ -107,6 +109,7 @@ const NAV_LABELS: Record<Route, string> = {
   chat: "Chat",
   call: "Call",
   images: "Images",
+  puter: "Puter AI",
   studio: "Studio",
   prompts: "Prompts",
   overview: "Overview",
@@ -134,15 +137,19 @@ const loadStudioScreen = () =>
   import("./screens/StudioScreen.tsx").then((module) => ({ default: module.StudioScreen }));
 const loadCompanionScreen = () =>
   import("./screens/CompanionScreen.tsx").then((module) => ({ default: module.CompanionScreen }));
+const loadPuterScreen = () =>
+  import("./screens/PuterScreen.tsx").then((module) => ({ default: module.PuterScreen }));
 
 const AvatarScreen = lazy(loadAvatarScreen);
 const CallScreen = lazy(loadCallScreen);
 const StudioScreen = lazy(loadStudioScreen);
 const CompanionScreen = lazy(loadCompanionScreen);
+const PuterScreen = lazy(loadPuterScreen);
 
 const PRELOAD_ROUTE: Partial<Record<Route, () => Promise<unknown>>> = {
   avatar: loadAvatarScreen,
   call: loadCallScreen,
+  puter: loadPuterScreen,
   studio: loadStudioScreen,
 };
 
@@ -167,7 +174,7 @@ const PHONE_ROUTES: readonly Route[] = [
  * you configure. A group label is not a route; it is the same button list with headings between.
  */
 const NAV_GROUPS: readonly { label: string; items: readonly Route[] }[] = [
-  { label: "Create", items: ["chat", "prompts", "call", "images", "studio", "overview"] },
+  { label: "Create", items: ["chat", "prompts", "call", "images", "puter", "studio", "overview"] },
   {
     label: "Workspace",
     items: [
@@ -858,6 +865,8 @@ export default function App() {
             />
           ) : route === "images" ? (
             <ImagesScreen client={client} connected={connected} pull={pull} />
+          ) : route === "puter" ? (
+            <PuterScreen />
           ) : route === "studio" ? (
             <StudioScreen
               client={client}
